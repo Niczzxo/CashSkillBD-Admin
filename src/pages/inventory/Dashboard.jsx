@@ -19,10 +19,10 @@ export function Dashboard({ session }) {
         const [p1, p2, p3, p4] = await Promise.all([
           safe(() => supabase.from('cashskillbd_products').select('id', { count: 'exact', head: true }).eq('status', 'active'), { count: 0 }),
           safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
-          safe(() => supabase.from('cashskillbd_sales_orders').select('total_amount').eq('status', 'confirmed').gte('created_at', new Date(Date.now() - 30*24*3600*1000).toISOString()), { data: [] }),
+          safe(() => supabase.from('cashskillbd_sales_orders').select('grand_total').eq('status', 'confirmed').gte('created_at', new Date(Date.now() - 30*24*3600*1000).toISOString()), { data: [] }),
           safe(() => supabase.from('cashskillbd_products').select('id,name,stock_qty').eq('status', 'active').lte('stock_qty', 5).order('stock_qty').limit(5), { data: [] }),
         ])
-        const revenue = (p3.data || []).reduce((s, o) => s + Number(o.total_amount || 0), 0)
+        const revenue = (p3.data || []).reduce((s, o) => s + Number(o.grand_total || 0), 0)
         setStats({
           products: p1.count || 0,
           pendingOrders: p2.count || 0,
@@ -30,13 +30,13 @@ export function Dashboard({ session }) {
         })
         setLowStock(p4.data || [])
         const { data: ords } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('id,customer_name,total_amount,status,created_at')
+          .select('id,customer_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
         setRecent(ords || [])
         // Monthly sales (last 6 months)
         const sixAgo = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 5); sixAgo.setDate(1)
         const { data: mall } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('total_amount,created_at').eq('status', 'confirmed').gte('created_at', sixAgo.toISOString()), { data: [] })
+          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', sixAgo.toISOString()), { data: [] })
         const bn = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে']
         const buckets = []
         for (let i = 5; i >= 0; i--) {
@@ -47,7 +47,7 @@ export function Dashboard({ session }) {
           const d = new Date(o.created_at)
           const k = `${d.getFullYear()}-${d.getMonth()}`
           const b = buckets.find(x => x.key === k)
-          if (b) b.total += Number(o.total_amount || 0)
+          if (b) b.total += Number(o.grand_total || 0)
         })
         setMonthly(buckets)
       } catch (e) { err(e) }
@@ -107,7 +107,7 @@ export function Dashboard({ session }) {
             <div className="tbl-wrap"><div className="tbl-wrap"><table className="tbl">
               <thead><tr><th>ক্রেতা</th><th>মোট</th><th>স্ট্যাটাস</th></tr></thead>
               <tbody>{recent.map(o => (
-                <tr key={o.id}><td>{o.customer_name || '-'}</td><td>{money(o.total_amount)}</td><td>{o.status}</td></tr>
+                <tr key={o.id}><td>{o.customer_name || '-'}</td><td>{money(o.grand_total)}</td><td>{o.status}</td></tr>
               ))}</tbody>
             </table></div></div>
           )}

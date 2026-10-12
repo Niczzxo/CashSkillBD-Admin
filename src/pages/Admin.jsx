@@ -143,7 +143,7 @@ export function Admin() {
         </div>
         <div className="mnav-links">
           {GROUPS.flatMap(g => g.items).map((it, i) => (
-            <a key={it.id} onClick={() => goSec(it.id)} style={{animationDelay: `${i * 25}ms`}} className={sec === it.id ? 'active' : ''}>
+            <a key={it.id} onClick={() => goSec(it.id)}  className={sec === it.id ? 'active' : ''}>
               <span>{it.label}</span>
               <span className="mnav-arrow">→</span>
             </a>

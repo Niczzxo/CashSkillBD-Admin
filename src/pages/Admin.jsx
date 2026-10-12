@@ -71,7 +71,7 @@ const SEC_TITLES = {
 }
 
 export function Admin() {
-  const { session, isStaff, role } = useAuth()
+  const { session, isStaff, role, signOut } = useAuth()
   const [sec, setSec] = useState('dashboard')
 
   useEffect(() => {
@@ -115,8 +115,13 @@ export function Admin() {
   return (
     <section className="admin-sec" style={{minHeight:'90svh'}}>
       <div className="wrap">
-        <span className="kicker">অ্যাডমিন প্যানেল</span>
-        <h2 className="sec-title admin-title">🛠️ ম্যানেজমেন্ট <small style={{fontSize:'.9rem', color:'var(--muted)'}}>({role})</small></h2>
+        <div className="admin-head">
+          <div>
+            <span className="kicker">অ্যাডমিন প্যানেল</span>
+            <h2 className="sec-title admin-title">🛠️ ম্যানেজমেন্ট <small style={{fontSize:'.9rem', color:'var(--muted)'}}>({role})</small></h2>
+          </div>
+          <button className="btn btn-sm btn-ghost" onClick={signOut} style={{flexShrink:0}}>লগআউট</button>
+        </div>
         <div className="admin-layout">
           <aside className="admin-side">
             {GROUPS.map((g, gi) => (

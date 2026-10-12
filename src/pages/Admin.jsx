@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLang } from '../i18n/LanguageContext.jsx'
+import { tr } from '../i18n/translations.js'
 import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { navigate, link } from '../lib/router.js'
@@ -34,44 +36,45 @@ const GROUPS = [
   {
     title: null,
     items: [
-      { id: 'dashboard', label: '📊 ড্যাশবোর্ড' },
-      { id: 'site-settings', label: '⚙️ সাইট সেটিংস' },
-      { id: 'orders', label: '🧾 অর্ডার' },
-      { id: 'lessons', label: '🎬 লেসন' },
-      { id: 'members', label: '👥 মেম্বার' },
-      { id: 'team', label: '🛡️ টিম' },
-      { id: 'reviews', label: '⭐ রিভিউ' },
+      { id: 'dashboard', key: 'dashboard' },
+      { id: 'site-settings', key: 'site_settings' },
+      { id: 'orders', key: 'orders' },
+      { id: 'lessons', key: 'lessons' },
+      { id: 'members', key: 'members' },
+      { id: 'team', key: 'team' },
+      { id: 'reviews', key: 'reviews' },
     ],
   },
   {
-    title: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
+    titleKey: 'products_mgmt',
     items: [
-      { id: 'products', label: '📦 প্রোডাক্ট' },
-      { id: 'ip', label: '🌐 IP' },
-      { id: 'vps', label: '🖥️ VPS' },
-      { id: 'number', label: '🔢 নাম্বার' },
-      { id: 'dollar', label: '💵 ডলার' },
-      { id: 'sales-orders', label: '🧾 বিক্রয় অর্ডার' },
-      { id: 'inventory', label: '📊 ইনভেন্টরি' },
-      { id: 'suppliers', label: '🏭 সাপ্লায়ার' },
-      { id: 'reports', label: '📈 লাভ-ক্ষতি' },
-      { id: 'price-history', label: '🕘 দামের ইতিহাস' },
-      { id: 'audit-logs', label: '📝 অডিট লগ' },
+      { id: 'products', key: 'products' },
+      { id: 'ip', key: 'services_ip' },
+      { id: 'vps', key: 'services_vps' },
+      { id: 'number', key: 'services_number' },
+      { id: 'dollar', key: 'dollar' },
+      { id: 'sales-orders', key: 'sales_orders' },
+      { id: 'inventory', key: 'inventory' },
+      { id: 'suppliers', key: 'suppliers' },
+      { id: 'reports', key: 'reports' },
+      { id: 'price-history', key: 'price_history' },
+      { id: 'audit-logs', key: 'audit_logs' },
     ],
   },
 ]
 
 const SEC_TITLES = {
-  dashboard: '📊 ড্যাশবোর্ড', 'site-settings': '⚙️ সাইট সেটিংস', orders: '🧾 অর্ডার', lessons: '🎬 লেসন', members: '👥 মেম্বার',
-  team: '🛡️ টিম', reviews: '⭐ রিভিউ', products: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
-  ip: '🌐 IP ম্যানেজমেন্ট', vps: '🖥️ VPS ম্যানেজমেন্ট', number: '🔢 নাম্বার ম্যানেজমেন্ট',
-  dollar: '💵 ডলার ক্রয় / বিক্রয়', 'sales-orders': '🧾 বিক্রয় অর্ডার',
-  inventory: '📊 ইনভেন্টরি', suppliers: '🏭 সাপ্লায়ার ও ক্রয়',
-  reports: '📈 লাভ-ক্ষতি রিপোর্ট', 'price-history': '🕘 দামের ইতিহাস', 'audit-logs': '📝 অডিট লগ',
+  dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members',
+  team: 'team', reviews: 'reviews', products: 'products_mgmt',
+  ip: 'services_ip', vps: 'services_vps', number: 'services_number',
+  dollar: 'dollar', 'sales-orders': 'sales_orders',
+  inventory: 'inventory', suppliers: 'suppliers',
+  reports: 'reports', 'price-history': 'price_history', 'audit-logs': 'audit_logs',
 }
 
 export function Admin() {
   const { session, isStaff, role, signOut } = useAuth()
+  const { lang, toggle } = useLang()
   const [sec, setSec] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -128,8 +131,11 @@ export function Admin() {
           </div>
           <div className="admin-nav-right">
             <span className="role-badge">{role}</span>
-            <button className="btn btn-sm btn-ghost hide-m" onClick={signOut}>লগআউট</button>
-            <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="মেনু">
+            <button className="btn btn-sm btn-ghost" onClick={toggle} title={lang === 'en' ? 'বাংলা' : 'English'}>
+              🌐 {lang === 'en' ? 'বাং' : 'EN'}
+            </button>
+            <button className="btn btn-sm btn-ghost hide-m" onClick={signOut}>{tr(lang, 'logout')}</button>
+            <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={tr(lang, 'menu')}>
               <span /><span /><span />
             </button>
           </div>
@@ -150,7 +156,11 @@ export function Admin() {
           ))}
         </div>
         <div className="mnav-foot">
-          <button className="btn btn-block btn-ghost" onClick={signOut}>লগআউট</button>
+          <button className="btn btn-block btn-ghost" onClick={() => { toggle(); setMenuOpen(false); }}>
+            🌐 {lang === 'en' ? 'বাংলায় দেখুন' : 'View in English'}
+          </button>
+          <div style={{height:8}} />
+          <button className="btn btn-block btn-ghost" onClick={signOut}>{tr(lang, 'logout')}</button>
         </div>
       </aside>
       <section className="admin-sec" style={{minHeight:'90svh'}}>
@@ -160,17 +170,17 @@ export function Admin() {
               {GROUPS.map((g, gi) => (
                 <div key={gi}>
                   {gi > 0 && <div className="grp-div" />}
-                  {g.title && <div className="grp-title">{g.title}</div>}
+                  {g.titleKey && <div className="grp-title">{tr(lang, g.titleKey)}</div>}
                   {g.items.map(it => (
                     <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
-                      {it.label}
+                      {tr(lang, it.key)}
                     </button>
                   ))}
                 </div>
               ))}
             </aside>
             <div className="admin-main">
-              <h3 className="sec-title admin-sec-title">{SEC_TITLES[sec]}</h3>
+              <h3 className="sec-title admin-sec-title">{tr(lang, SEC_TITLES[sec])}</h3>
               {renderSec()}
             </div>
         </div>

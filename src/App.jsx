@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
+import { LangProvider } from './i18n/LanguageContext.jsx'
 import { Admin } from './pages/Admin.jsx'
 
 function LoginForm() {
@@ -49,7 +50,9 @@ export default function App() {
       <div className="ambient" />
       <div className="orb orb-1" />
       <div className="orb orb-2" />
-      <AuthProvider><Shell /></AuthProvider>
+      <LangProvider>
+        <AuthProvider><Shell /></AuthProvider>
+      </LangProvider>
     </>
   )
 }

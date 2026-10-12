@@ -27,11 +27,15 @@ import { Reports } from './inventory/Reports.jsx'
 import { PriceHistory } from './inventory/PriceHistory.jsx'
 import { AuditLogs } from './inventory/AuditLogs.jsx'
 import { Inventory } from './inventory/Inventory.jsx'
+import { Dashboard } from './inventory/Dashboard.jsx'
+import { SiteSettings } from './inventory/SiteSettings.jsx'
 
 const GROUPS = [
   {
     title: null,
     items: [
+      { id: 'dashboard', label: '📊 ড্যাশবোর্ড' },
+      { id: 'site-settings', label: '⚙️ সাইট সেটিংস' },
       { id: 'orders', label: '🧾 অর্ডার' },
       { id: 'lessons', label: '🎬 লেসন' },
       { id: 'members', label: '👥 মেম্বার' },
@@ -58,7 +62,7 @@ const GROUPS = [
 ]
 
 const SEC_TITLES = {
-  orders: '🧾 অর্ডার', lessons: '🎬 লেসন', members: '👥 মেম্বার',
+  dashboard: '📊 ড্যাশবোর্ড', 'site-settings': '⚙️ সাইট সেটিংস', orders: '🧾 অর্ডার', lessons: '🎬 লেসন', members: '👥 মেম্বার',
   team: '🛡️ টিম', reviews: '⭐ রিভিউ', products: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
   ip: '🌐 IP ম্যানেজমেন্ট', vps: '🖥️ VPS ম্যানেজমেন্ট', number: '🔢 নাম্বার ম্যানেজমেন্ট',
   dollar: '💵 ডলার ক্রয় / বিক্রয়', 'sales-orders': '🧾 বিক্রয় অর্ডার',
@@ -68,7 +72,7 @@ const SEC_TITLES = {
 
 export function Admin() {
   const { session, isStaff, role } = useAuth()
-  const [sec, setSec] = useState('orders')
+  const [sec, setSec] = useState('dashboard')
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -86,6 +90,8 @@ export function Admin() {
 
   const renderSec = () => {
     switch (sec) {
+      case 'dashboard': return <Dashboard session={session} />
+      case 'site-settings': return <SiteSettings session={session} role={role} />
       case 'orders': return <OrdersTab session={session} />
       case 'lessons': return <LessonsTab />
       case 'members': return <MembersTab session={session} />

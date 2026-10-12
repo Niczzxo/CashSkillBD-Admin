@@ -37,17 +37,10 @@ function LoginForm() {
 }
 
 function Shell() {
-  const { session, loading, signOut } = useAuth()
+  const { session, loading } = useAuth()
   if (loading) return <p className="center" style={{padding:60}}>লোড হচ্ছে…</p>
   if (!session) return <LoginForm />
-  return (
-    <div>
-      <div style={{display:'flex', justifyContent:'flex-end', padding:'10px 16px'}}>
-        <button className="btn btn-sm btn-ghost" onClick={signOut}>লগআউট</button>
-      </div>
-      <Admin />
-    </div>
-  )
+  return <Admin />
 }
 
 export default function App() {

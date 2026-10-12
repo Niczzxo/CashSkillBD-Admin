@@ -22,6 +22,7 @@ export const t = {
     reports: '📈 Reports',
     price_history: '📉 Price History',
     audit_logs: '📝 Audit Logs',
+    products_mgmt: '📦 Product Management',
     menu: 'Menu',
   },
   bn: {
@@ -46,6 +47,7 @@ export const t = {
     reports: '📈 রিপোর্ট',
     price_history: '📉 প্রাইস হিস্ট্রি',
     audit_logs: '📝 অডিট লগ',
+    products_mgmt: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
     menu: 'মেনু',
   }
 }

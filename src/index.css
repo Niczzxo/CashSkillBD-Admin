@@ -397,3 +397,12 @@ label.f-label { display: block; font-size: .85rem; color: var(--muted); margin-b
   .tbl { font-size: .82rem; min-width: 480px; }
   .tbl th, .tbl td { padding: 8px 10px; }
 }
+
+/* admin header spacing */
+.admin-sec { padding: 28px 0 60px; }
+.admin-title { margin-bottom: 20px; }
+@media (max-width: 600px) {
+  .admin-sec { padding: 18px 0 50px; }
+  .admin-title { font-size: 1.4rem; margin-bottom: 14px; }
+  .admin-title small { display: block; margin-top: 2px; }
+}

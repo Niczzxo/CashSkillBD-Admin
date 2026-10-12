@@ -19,15 +19,18 @@ function LoginForm() {
 
   return (
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-      <form onSubmit={submit} className="card" style={{width:'100%', maxWidth:380, padding:28}}>
-        <h2 style={{marginBottom:6}}>🛠️ CashSkillBD Admin</h2>
-        <p style={{color:'var(--muted)', marginBottom:20, fontSize:'.9rem'}}>ম্যানেজমেন্ট প্যানেলে লগইন করুন</p>
-        {error && <p style={{color:'#ff7d7d', marginBottom:12}}>{error}</p>}
-        <input type="email" placeholder="ইমেইল" value={email} onChange={e=>setEmail(e.target.value)}
-          required style={{width:'100%', marginBottom:10}} />
-        <input type="password" placeholder="পাসওয়ার্ড" value={password} onChange={e=>setPassword(e.target.value)}
-          required style={{width:'100%', marginBottom:16}} />
-        <button className="btn btn-block" disabled={busy}>{busy ? '...' : 'লগইন'}</button>
+      <form onSubmit={submit} className="card" style={{width:'100%', maxWidth:400, padding:32}}>
+        <div className="center" style={{marginBottom:20}}>
+          <div style={{fontSize:'2.6rem', marginBottom:8}}>🛠️</div>
+          <h2 style={{marginBottom:6}}>CashSkillBD Admin</h2>
+          <p style={{color:'var(--muted)', fontSize:'.92rem'}}>ম্যানেজমেন্ট প্যানেলে লগইন করুন</p>
+        </div>
+        {error && <p style={{color:'#ff7d7d', marginBottom:12, textAlign:'center'}}>{error}</p>}
+        <label className="f-label">ইমেইল</label>
+        <input className="inp" type="email" placeholder="admin@example.com" value={email} onChange={e=>setEmail(e.target.value)} required />
+        <label className="f-label">পাসওয়ার্ড</label>
+        <input className="inp" type="password" placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} required />
+        <button className="btn btn-block" disabled={busy} style={{marginTop:8}}>{busy ? 'লগইন হচ্ছে…' : '🔐 লগইন'}</button>
       </form>
     </div>
   )
@@ -48,5 +51,12 @@ function Shell() {
 }
 
 export default function App() {
-  return <AuthProvider><Shell /></AuthProvider>
+  return (
+    <>
+      <div className="ambient" />
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <AuthProvider><Shell /></AuthProvider>
+    </>
+  )
 }

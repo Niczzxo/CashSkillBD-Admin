@@ -113,36 +113,46 @@ export function Admin() {
   }
 
   return (
-    <section className="admin-sec" style={{minHeight:'90svh'}}>
-      <div className="wrap">
-        <div className="admin-head">
-          <div>
-            <span className="kicker">অ্যাডমিন প্যানেল</span>
-            <h2 className="sec-title admin-title">🛠️ ম্যানেজমেন্ট <small style={{fontSize:'.9rem', color:'var(--muted)'}}>({role})</small></h2>
+    <>
+      <nav className="admin-nav">
+        <div className="wrap admin-nav-inner">
+          <div className="admin-brand">
+            <span className="admin-brand-icon">🛠️</span>
+            <div>
+              <div className="admin-brand-name">CashSkillBD <span>Admin</span></div>
+              <div className="admin-brand-tag">MANAGEMENT PANEL</div>
+            </div>
           </div>
-          <button className="btn btn-sm btn-ghost" onClick={signOut} style={{flexShrink:0}}>লগআউট</button>
+          <div className="admin-nav-right">
+            <span className="role-badge">{role}</span>
+            <button className="btn btn-sm btn-ghost" onClick={signOut}>লগআউট</button>
+          </div>
         </div>
-        <div className="admin-layout">
-          <aside className="admin-side">
-            {GROUPS.map((g, gi) => (
-              <div key={gi}>
-                {gi > 0 && <div className="grp-div" />}
-                {g.title && <div className="grp-title">{g.title}</div>}
-                {g.items.map(it => (
-                  <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => { setSec(it.id); window.scrollTo(0, 0) }}>
-                    {it.label}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </aside>
-          <div className="admin-main">
-            <h3 className="sec-title" style={{fontSize:'1.4rem', marginBottom:18}}>{SEC_TITLES[sec]}</h3>
-            {renderSec()}
-          </div>
+      </nav>
+      <section className="admin-sec" style={{minHeight:'90svh'}}>
+        <div className="wrap">
+          <div className="admin-layout">
+            <aside className="admin-side">
+              {GROUPS.map((g, gi) => (
+                <div key={gi}>
+                  {gi > 0 && <div className="grp-div" />}
+                  {g.title && <div className="grp-title">{g.title}</div>}
+                  {g.items.map(it => (
+                    <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => { setSec(it.id); window.scrollTo(0, 0) }}>
+                      {it.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </aside>
+            <div className="admin-main">
+              <h3 className="sec-title admin-sec-title">{SEC_TITLES[sec]}</h3>
+              {renderSec()}
+            </div>
         </div>
       </div>
     </section>
+    </>
   )
 }
 
@@ -180,7 +190,7 @@ function OrdersTab({ session }) {
       </div>
       <div className="card" style={{padding:0, overflow:'hidden'}}>
         <div style={{overflowX:'auto'}}>
-          <table className="data-table">
+          <div className="tbl-wrap"><table className="data-table">
             <thead><tr><th>ক্রেতা</th><th>আইটেম</th><th>দাম</th><th>মেথড</th><th>TrxID</th><th>স্ট্যাটাস</th><th></th></tr></thead>
             <tbody>
               {list.map(o => (
@@ -202,7 +212,7 @@ function OrdersTab({ session }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {list.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>কোনো অর্ডার নেই।</p>}
         </div>
       </div>
@@ -298,7 +308,7 @@ function LessonsTab() {
 
       <div className="card" style={{padding:0, overflow:'hidden'}}>
         <div style={{overflowX:'auto'}}>
-          <table className="data-table">
+          <div className="tbl-wrap"><table className="data-table">
             <thead><tr><th>#</th><th>টাইটেল</th><th>ভিডিও</th><th>ফ্রি</th><th></th></tr></thead>
             <tbody>
               {lessons.map((l, i) => (
@@ -314,7 +324,7 @@ function LessonsTab() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {lessons.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>এই কোর্সে এখনো লেসন নেই।</p>}
         </div>
       </div>
@@ -332,7 +342,7 @@ function MembersTab({ session }) {
   return (
     <div className="card" style={{padding:0, overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
-        <table className="data-table">
+        <div className="tbl-wrap"><table className="data-table">
           <thead><tr><th>নাম</th><th>ইমেইল</th><th>রোল</th><th>জয়েন</th></tr></thead>
           <tbody>
             {members.map(m => (
@@ -343,7 +353,7 @@ function MembersTab({ session }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         {members.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>কোনো মেম্বার নেই।</p>}
       </div>
     </div>
@@ -401,7 +411,7 @@ function TeamTab({ session, role }) {
       </div>
       <div className="card" style={{padding:0, overflow:'hidden'}}>
         <div style={{overflowX:'auto'}}>
-          <table className="data-table">
+          <div className="tbl-wrap"><table className="data-table">
             <thead><tr><th>নাম</th><th>ইমেইল</th><th>রোল</th><th></th></tr></thead>
             <tbody>
               {members.map(m => (
@@ -417,7 +427,7 @@ function TeamTab({ session, role }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {members.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>এখনো কোনো টিম মেম্বার নেই।</p>}
         </div>
       </div>
@@ -443,7 +453,7 @@ function ReviewsTab() {
   return (
     <div className="card" style={{padding:0, overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
-        <table className="data-table">
+        <div className="tbl-wrap"><table className="data-table">
           <thead><tr><th>লেখক</th><th>রিভিউ</th><th>লিংক</th><th></th></tr></thead>
           <tbody>
             {reviews.map(r => (
@@ -455,7 +465,7 @@ function ReviewsTab() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         {reviews.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>কোনো রিভিউ নেই।</p>}
       </div>
     </div>

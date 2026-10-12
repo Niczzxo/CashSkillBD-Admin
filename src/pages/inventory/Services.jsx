@@ -150,14 +150,14 @@ export function Services({ session, role, serviceType }) {
             <button className="mini-btn" onClick={() => setHist(null)}>✕ বন্ধ</button>
           </div>
           {hist.events.length === 0 ? <p style={{ color: 'var(--muted)' }}>কোনো ইভেন্ট নেই।</p> : (
-            <table className="data-table">
+            <div className="tbl-wrap"><table className="data-table">
               <thead><tr><th>সময়</th><th>ইভেন্ট</th><th>নোট</th></tr></thead>
               <tbody>
                 {hist.events.map(ev => (
                   <tr key={ev.id}><td>{dstr(ev.created_at)}</td><td><b>{ev.event}</b></td><td>{ev.notes || '—'}</td></tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}

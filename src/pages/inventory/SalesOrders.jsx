@@ -183,7 +183,7 @@ export function SalesOrders({ session, role }) {
           <p><b>{detail.order.customer_name}</b> <span style={{ color: 'var(--muted)' }}>{detail.order.customer_phone || ''}</span></p>
           <p style={{ color: 'var(--muted)', fontSize: '.9rem' }}>{dstr(detail.order.created_at)}{detail.order.notes ? ' · ' + detail.order.notes : ''}</p>
           <div style={{ overflowX: 'auto', marginTop: 12 }}>
-            <table className="data-table">
+            <div className="tbl-wrap"><table className="data-table">
               <thead><tr><th>প্রোডাক্ট</th><th>পরিমাণ</th><th>একক মূল্য</th><th>লাইন মোট</th></tr></thead>
               <tbody>
                 {(detail.items || []).map(it => (
@@ -195,7 +195,7 @@ export function SalesOrders({ session, role }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
           <div style={{ textAlign: 'right', marginTop: 12 }}>
             {detail.order.discount > 0 && <p style={{ color: 'var(--muted)' }}>ডিসকাউন্ট: −{money(detail.order.discount, detail.order.currency)}</p>}

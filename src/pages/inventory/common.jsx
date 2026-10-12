@@ -24,7 +24,7 @@ export function Tbl({ children }) {
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto' }}>
-        <table className="data-table">{children}</table>
+        <div className="tbl-wrap"><table className="data-table">{children}</table></div>
       </div>
     </div>
   )

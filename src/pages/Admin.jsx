@@ -73,6 +73,7 @@ const SEC_TITLES = {
 export function Admin() {
   const { session, isStaff, role, signOut } = useAuth()
   const [sec, setSec] = useState('dashboard')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -87,6 +88,8 @@ export function Admin() {
       </div>
     )
   }
+
+  const goSec = (id) => { setSec(id); setMenuOpen(false); window.scrollTo(0, 0) }
 
   const renderSec = () => {
     switch (sec) {
@@ -125,10 +128,31 @@ export function Admin() {
           </div>
           <div className="admin-nav-right">
             <span className="role-badge">{role}</span>
-            <button className="btn btn-sm btn-ghost" onClick={signOut}>লগআউট</button>
+            <button className="btn btn-sm btn-ghost hide-m" onClick={signOut}>লগআউট</button>
+            <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label="মেনু">
+              <span /><span /><span />
+            </button>
           </div>
         </div>
       </nav>
+      <div className={`mnav-overlay ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
+      <aside className={`mnav ${menuOpen ? 'show' : ''}`}>
+        <div className="mnav-head">
+          <span className="brand-name">CashSkill<span>BD</span> Admin</span>
+          <button className="mnav-x" onClick={() => setMenuOpen(false)}>✕</button>
+        </div>
+        <div className="mnav-links">
+          {GROUPS.flatMap(g => g.items).map((it, i) => (
+            <a key={it.id} onClick={() => goSec(it.id)} style={{animationDelay: `${i * 25}ms`}} className={sec === it.id ? 'active' : ''}>
+              <span>{it.label}</span>
+              <span className="mnav-arrow">→</span>
+            </a>
+          ))}
+        </div>
+        <div className="mnav-foot">
+          <button className="btn btn-block btn-ghost" onClick={signOut}>লগআউট</button>
+        </div>
+      </aside>
       <section className="admin-sec" style={{minHeight:'90svh'}}>
         <div className="wrap">
           <div className="admin-layout">
@@ -138,7 +162,7 @@ export function Admin() {
                   {gi > 0 && <div className="grp-div" />}
                   {g.title && <div className="grp-title">{g.title}</div>}
                   {g.items.map(it => (
-                    <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => { setSec(it.id); window.scrollTo(0, 0) }}>
+                    <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
                       {it.label}
                     </button>
                   ))}

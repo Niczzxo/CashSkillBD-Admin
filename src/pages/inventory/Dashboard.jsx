@@ -101,12 +101,12 @@ export function Dashboard({ session }) {
         <div className="card" style={{padding:18}}>
           <h3 style={{marginBottom:12}}>🕘 সাম্প্রতিক অর্ডার</h3>
           {recent.length === 0 ? <p style={{color:'var(--muted)'}}>কোনো অর্ডার নেই</p> : (
-            <div className="tbl-wrap"><table className="tbl">
+            <div className="tbl-wrap"><div className="tbl-wrap"><table className="tbl">
               <thead><tr><th>ক্রেতা</th><th>মোট</th><th>স্ট্যাটাস</th></tr></thead>
               <tbody>{recent.map(o => (
                 <tr key={o.id}><td>{o.customer_name || '-'}</td><td>{money(o.total_amount)}</td><td>{o.status}</td></tr>
               ))}</tbody>
-            </table></div>
+            </table></div></div>
           )}
         </div>
         <div className="card" style={{padding:18}}>

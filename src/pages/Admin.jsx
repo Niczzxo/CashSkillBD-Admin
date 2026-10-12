@@ -113,10 +113,10 @@ export function Admin() {
   }
 
   return (
-    <section style={{padding:'110px 0 60px', minHeight:'90svh'}}>
+    <section className="admin-sec" style={{minHeight:'90svh'}}>
       <div className="wrap">
         <span className="kicker">অ্যাডমিন প্যানেল</span>
-        <h2 className="sec-title" style={{marginBottom:20}}>🛠️ ম্যানেজমেন্ট <small style={{fontSize:'.9rem', color:'var(--muted)'}}>({role})</small></h2>
+        <h2 className="sec-title admin-title">🛠️ ম্যানেজমেন্ট <small style={{fontSize:'.9rem', color:'var(--muted)'}}>({role})</small></h2>
         <div className="admin-layout">
           <aside className="admin-side">
             {GROUPS.map((g, gi) => (

@@ -31,7 +31,7 @@ import { AuditLogs } from './inventory/AuditLogs.jsx'
 import { Inventory } from './inventory/Inventory.jsx'
 import { Dashboard } from './inventory/Dashboard.jsx'
 import { SiteSettings } from './inventory/SiteSettings.jsx'
-import { Tickets, Inquiries } from './inventory/Support.jsx'
+import { Tickets, Inquiries, SeminarRegs } from './inventory/Support.jsx'
 
 const GROUPS = [
   {
@@ -46,6 +46,7 @@ const GROUPS = [
       { id: 'reviews', key: 'reviews' },
       { id: 'tickets', key: 'tickets' },
       { id: 'inquiries', key: 'inquiries' },
+      { id: 'seminar-regs', key: 'seminar_regs' },
     ],
   },
   {
@@ -68,7 +69,7 @@ const GROUPS = [
 
 const SEC_TITLES = {
   dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members',
-  team: 'team', reviews: 'reviews', tickets: 'tickets', inquiries: 'inquiries', products: 'products_mgmt',
+  team: 'team', reviews: 'reviews', tickets: 'tickets', inquiries: 'inquiries', 'seminar-regs': 'seminar_regs', products: 'products_mgmt',
   ip: 'services_ip', vps: 'services_vps', number: 'services_number',
   dollar: 'dollar', 'sales-orders': 'sales_orders',
   inventory: 'inventory', suppliers: 'suppliers',
@@ -108,6 +109,7 @@ export function Admin() {
       case 'reviews': return <ReviewsTab />
       case 'tickets': return <Tickets session={session} />
       case 'inquiries': return <Inquiries session={session} />
+      case 'seminar-regs': return <SeminarRegs session={session} />
       case 'products': return <Products session={session} role={role} />
       case 'ip': return <Services key="ip" session={session} role={role} serviceType="ip" />
       case 'vps': return <Services key="vps" session={session} role={role} serviceType="vps" />

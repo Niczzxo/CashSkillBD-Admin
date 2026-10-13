@@ -384,10 +384,11 @@ function MembersTab({ session }) {
     <div className="card" style={{padding:0, overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
         <div className="tbl-wrap"><table className="data-table">
-          <thead><tr><th>নাম</th><th>ইমেইল</th><th>রোল</th><th>জয়েন</th></tr></thead>
+          <thead><tr><th>মেম্বার আইডি</th><th>নাম</th><th>ইমেইল</th><th>রোল</th><th>জয়েন</th></tr></thead>
           <tbody>
             {members.map(m => (
               <tr key={m.id}>
+                <td style={{fontFamily:'monospace', whiteSpace:'nowrap'}}>{m.member_id || '—'}</td>
                 <td>{m.full_name || '—'}</td><td>{m.email}</td>
                 <td>{m.role === 'admin' ? '👑 অ্যাডমিন' : m.role === 'support' ? '🛡️ সাপোর্ট' : '👤 মেম্বার'}</td>
                 <td>{new Date(m.created_at).toLocaleDateString('bn-BD')}</td>

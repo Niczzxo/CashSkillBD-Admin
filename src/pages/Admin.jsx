@@ -209,10 +209,14 @@ function OrdersTab({ session }) {
   }
   useEffect(() => { load() }, [])
 
-  const act = async (id, action) => {
+  const act = async (id, action, extra = {}) => {
     setBusy(id)
     try {
-      await adminApi(session, action, { order_id: id })
+      if (action === 'reject_order') {
+        const reason = prompt('রিজেক্ট করার কারণ লিখুন (optional):') || ''
+        extra = { reason }
+      }
+      await adminApi(session, action, { order_id: id, ...extra })
       await load()
     } catch (e) { alert('❌ ' + e.message) }
     setBusy(null)
@@ -241,7 +245,10 @@ function OrdersTab({ session }) {
                   <td>{fmt(o.price)}</td>
                   <td>{o.pay_method}</td>
                   <td><code>{o.trx_id}</code></td>
-                  <td>{o.status === 'confirmed' ? <span style={{color:'#7dffa8'}}>✅</span> : <span style={{color:'#f5c86e'}}>⏳</span>}</td>
+                  <td>{o.status === 'confirmed' ? <span style={{color:'#7dffa8'}}>✅</span> : o.status === 'rejected' ? <span style={{color:'#ff7b7b'}}>❌</span> : <span style={{color:'#f5c86e'}}>⏳</span>}<br/>
+                    {o.verified_at && <small style={{color:'var(--muted)'}}>{new Date(o.verified_at).toLocaleDateString('en-GB')}</small>}
+                    {o.reject_reason && <><br/><small style={{color:'#ff7b7b'}}>{o.reject_reason}</small></>}
+                  </td>
                   <td style={{whiteSpace:'nowrap'}}>
                     {o.status === 'pending' && (
                       <>

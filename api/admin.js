@@ -91,6 +91,52 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, added: true })
     }
 
+    // ── support tickets ──
+    if (action === 'list_tickets') {
+      const { status } = req.body
+      let q = `cashskillbd_support_tickets?select=*,profiles:cashskillbd_profiles!cashskillbd_support_tickets_user_id_fkey(email)&order=updated_at.desc`
+      if (status) q += `&status=eq.${status}`
+      const r = await sbGet(q)
+      return res.status(200).json({ tickets: r.data || [] })
+    }
+    if (action === 'ticket_messages') {
+      const { ticket_id } = req.body
+      const r = await sbGet(`cashskillbd_ticket_messages?ticket_id=eq.${ticket_id}&order=created_at.asc`)
+      return res.status(200).json({ messages: r.data || [] })
+    }
+    if (action === 'ticket_set_status') {
+      const { ticket_id, status } = req.body
+      if (!['open', 'in_progress', 'resolved', 'closed'].includes(status)) return res.status(400).json({ error: 'bad status' })
+      await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', { status, updated_at: new Date().toISOString() })
+      return res.status(200).json({ ok: true })
+    }
+    if (action === 'ticket_reply') {
+      const { ticket_id, message } = req.body
+      if (!message?.trim()) return res.status(400).json({ error: 'empty' })
+      await sbReq('cashskillbd_ticket_messages', 'POST', {
+        ticket_id, user_id: me.id, is_staff: true, message: message.slice(0, 2000),
+      })
+      await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', {
+        status: 'in_progress', updated_at: new Date().toISOString(),
+      })
+      return res.status(200).json({ ok: true })
+    }
+
+    // ── contact inquiries ──
+    if (action === 'list_inquiries') {
+      const { status } = req.body
+      let q = `cashskillbd_contact_inquiries?select=*&order=created_at.desc`
+      if (status) q += `&status=eq.${status}`
+      const r = await sbGet(q)
+      return res.status(200).json({ inquiries: r.data || [] })
+    }
+    if (action === 'inquiry_set_status') {
+      const { id, status } = req.body
+      if (!['new', 'replied', 'closed'].includes(status)) return res.status(400).json({ error: 'bad status' })
+      await sbReq(`cashskillbd_contact_inquiries?id=eq.${id}`, 'PATCH', { status })
+      return res.status(200).json({ ok: true })
+    }
+
     return res.status(400).json({ error: 'unknown action' })
   } catch (e) {
     return res.status(500).json({ error: 'server error' })

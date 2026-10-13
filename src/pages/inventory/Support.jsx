@@ -165,3 +165,55 @@ export function Inquiries({ session }) {
     </div>
   )
 }
+
+export function SeminarRegs({ session }) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState(null)
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const j = await adminApi(session, 'list_seminar_regs')
+        setRows(j.regs || [])
+      } catch (e) {
+        setErr(e.message)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  if (loading) return <p style={{color:'var(--muted)', padding:20}}>Loading…</p>
+  if (err) return <p style={{color:'#ff6b6e', padding:20}}>Error: {err}</p>
+
+  return (
+    <div>
+      <div className="card" style={{marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <b>🎟️ Total registrations: {rows.length}</b>
+        <span style={{fontSize:'.85rem', color:'var(--muted)'}}>Newest first</span>
+      </div>
+      {rows.length > 0 ? (
+        <div className="tbl-wrap">
+          <table className="tbl">
+            <thead>
+              <tr><th>Name</th><th>Mobile</th><th>Email</th><th>Registered</th></tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td>{r.name}</td>
+                  <td><a href={`tel:${r.mobile}`}>{r.mobile}</a></td>
+                  <td>{r.email || '—'}</td>
+                  <td style={{whiteSpace:'nowrap'}}>{new Date(r.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p style={{color:'var(--muted)', padding:20}}>No seminar registrations yet.</p>
+      )}
+    </div>
+  )
+}

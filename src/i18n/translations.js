@@ -24,6 +24,7 @@ export const t = {
     reports: '📈 Reports',
     price_history: '📉 Price History',
     audit_logs: '📝 Audit Logs',
+    seminar_regs: '🎟️ Seminar Regs',
     products_mgmt: '📦 Product Management',
     menu: 'Menu',
   },
@@ -51,6 +52,7 @@ export const t = {
     reports: '📈 রিপোর্ট',
     price_history: '📉 প্রাইস হিস্ট্রি',
     audit_logs: '📝 অডিট লগ',
+    seminar_regs: '🎟️ সেমিনার রেজিস্ট্রেশন',
     products_mgmt: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
     menu: 'মেনু',
   }

@@ -137,6 +137,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true })
     }
 
+    // ── seminar registrations (read-only) ──
+    if (action === 'list_seminar_regs') {
+      const r = await sbGet(`cashskillbd_seminar_regs?select=id,name,mobile,email,created_at&order=created_at.desc`)
+      return res.status(200).json({ regs: r.data || [] })
+    }
+
     return res.status(400).json({ error: 'unknown action' })
   } catch (e) {
     return res.status(500).json({ error: 'server error' })

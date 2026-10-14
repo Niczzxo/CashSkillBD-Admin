@@ -147,7 +147,7 @@ export function Dashboard({ session, goSec }) {
                     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
                     const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
                     const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                    opts.push(<option key={val} value={val} style={{background:'#1a0d0e'}}>📅 {label}</option>)
+                    opts.push(<option key={val} value={val} style={{background:'#1a0d0e'}}>{label}</option>)
                   }
                   return opts
                 })()}
@@ -161,13 +161,8 @@ export function Dashboard({ session, goSec }) {
 
             </div>
           </div>
-          {monthly.every(m => m.total === 0) ? (
-            <div style={{height:200, display:'grid', placeItems:'center', color:'var(--muted)'}}>
-              <div style={{textAlign:'center'}}>
-                <IChart size={40} />
-                <p>No sales data yet</p>
-              </div>
-            </div>
+          {false ? (
+            <div style={{height:200}} />
           ) : (
             <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{width:'100%', height:200}}>
               {[0,25,50,75,100].map(v => {

@@ -92,8 +92,11 @@ export function Dashboard({ session, goSec }) {
   const chartW = 600, chartH = 200, pad = 35
   const maxVal = Math.max(...monthly.map(m => m.total), 1)
   const pts = monthly.map((m, i) => {
-    const x = pad + (i / Math.max(monthly.length - 1, 1)) * (chartW - pad * 2)
-    const y = chartH - pad - (m.total / maxVal) * (chartH - pad * 2)
+    const dayNum = parseInt(m.label) || (i + 1)
+    const x = pad + ((dayNum - 1) / 29) * (chartW - pad * 2)
+    // Normalize to 0-100 scale for Y axis
+    const normalized = Math.min((m.total / Math.max(maxVal, 1)) * 100, 100)
+    const y = chartH - pad - (normalized / 100) * (chartH - pad * 2)
     return { x, y, ...m }
   })
   const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
@@ -161,25 +164,29 @@ export function Dashboard({ session, goSec }) {
 
             </div>
           </div>
-          {false ? (
-            <div style={{height:200}} />
-          ) : (
-            <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{width:'100%', height:200}}>
-              {[0,25,50,75,100].map(v => {
-                const y = chartH - pad - (v/100) * (chartH - pad*2)
-                return <g key={v}>
-                  <line x1={pad} y1={y} x2={chartW-pad} y2={y} stroke="rgba(255,255,255,.06)" />
-                  <text x={pad-8} y={y+4} fill="var(--muted)" fontSize="10" textAnchor="end">{Math.round(maxVal*v/100)}</text>
-                </g>
-              })}
-              <path d={areaPath} fill="rgba(255,91,91,.08)" />
-              <path d={linePath} fill="none" stroke="#ff5b5b" strokeWidth="2" />
-              {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#ff5b5b" />)}
-              {pts.map((p, i) => i % Math.ceil(pts.length/8) === 0 && (
-                <text key={'l'+i} x={p.x} y={chartH-10} fill="var(--muted)" fontSize="10" textAnchor="middle">{p.label}</text>
-              ))}
-            </svg>
-          )}
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{width:'100%', height:200}}>
+            {/* Y-axis grid: 0, 20, 40, 60, 80, 100 */}
+            {[0,20,40,60,80,100].map(v => {
+              const y = chartH - pad - (v/100) * (chartH - pad*2)
+              return <g key={v}>
+                <line x1={pad} y1={y} x2={chartW-pad} y2={y} stroke="rgba(255,255,255,.08)" strokeDasharray="3,3" />
+                <text x={pad-8} y={y+4} fill="#888" fontSize="11" textAnchor="end">{v}</text>
+              </g>
+            })}
+            {/* Vertical grid lines */}
+            {[1,5,10,15,20,25,30].map(day => {
+              const x = pad + ((day-1) / 29) * (chartW - pad*2)
+              return <line key={day} x1={x} y1={pad} x2={x} y2={chartH-pad} stroke="rgba(255,255,255,.04)" />
+            })}
+            <path d={areaPath} fill="rgba(255,91,91,.06)" />
+            <path d={linePath} fill="none" stroke="#ff5b5b" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3" fill="#ff5b5b" />)}
+            {/* X-axis labels: 1, 5, 10, 15, 20, 25, 30 */}
+            {[1,5,10,15,20,25,30].map(day => {
+              const x = pad + ((day-1) / 29) * (chartW - pad*2)
+              return <text key={day} x={x} y={chartH-8} fill="#888" fontSize="11" textAnchor="middle">{day}</text>
+            })}
+          </svg>
         </div>
 
         <div className="panel" style={{border:'1px solid rgba(255,91,91,.25)'}}>

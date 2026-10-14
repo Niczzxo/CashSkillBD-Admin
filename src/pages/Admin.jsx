@@ -30,7 +30,8 @@ import { Products } from './inventory/Products.jsx'
 import { VpsPlans } from './inventory/VpsPlans.jsx'
 import { Suppliers } from './inventory/Suppliers.jsx'
 import { SalesOrders } from './inventory/SalesOrders.jsx'
-import { AdminManagement, RolesPermissions, ActivityLogs } from './inventory/AdminManagement.jsx'
+import { AdminManagement, RolesPermissions } from './inventory/AdminManagement.jsx'
+import { ActivityLogs } from './inventory/ActivityLogs.jsx'
 import { CourseCustomers } from './inventory/CourseCustomers.jsx'
 import { ServiceCustomers } from './inventory/ServiceCustomers.jsx'
 import { IpServices } from './inventory/IpServices.jsx'
@@ -147,7 +148,7 @@ export function Admin() {
       case 'audit-logs': return <AuditLogs session={session} role={role} />
       case 'admins': return <AdminManagement session={session} role={role} />
       case 'roles': return <RolesPermissions />
-      case 'activity-logs': return <ActivityLogs />
+      case 'activity-logs': return <ActivityLogs session={session} role={role} />
       default: return null
     }
   }

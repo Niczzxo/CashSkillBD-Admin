@@ -22,7 +22,7 @@ function LoginForm() {
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <form onSubmit={submit} className="card" style={{width:'100%', maxWidth:400, padding:32}}>
         <div className="center" style={{marginBottom:20}}>
-          <div style={{fontSize:'2.6rem', marginBottom:8}}>🛠️</div>
+          <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{width:120, height:120, objectFit:'contain', marginBottom:8}} />
           <h2 style={{marginBottom:6}}>CashSkillBD Admin</h2>
           <p style={{color:'var(--muted)', fontSize:'.92rem'}}>ম্যানেজমেন্ট প্যানেলে লগইন করুন</p>
         </div>

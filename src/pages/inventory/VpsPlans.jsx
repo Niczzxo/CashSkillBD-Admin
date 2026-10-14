@@ -1,6 +1,8 @@
 // VPS Plans Management — CashSkillBD Admin (full CRUD + edit drawer)
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 import { supabase } from '../../lib/supabase.js'
 
 const COUNTRY_CODES = {
@@ -16,12 +18,7 @@ const DEFAULT_CYCLES = {
   '6months': { enabled: true, discount: 10 },
   yearly: { enabled: true, discount: 15 },
 }
-const CYCLE_META = {
-  monthly: { label: 'Monthly', months: 1, suffix: '/mo' },
-  '3months': { label: '3 Months', months: 3, suffix: '/3mo' },
-  '6months': { label: '6 Months', months: 6, suffix: '/6mo' },
-  yearly: { label: 'Annual', months: 12, suffix: '/yr' },
-}
+
 
 function specsOf(p) {
   try { return typeof p.specs === 'string' ? JSON.parse(p.specs) : (p.specs || {}) } catch { return {} }
@@ -59,6 +56,13 @@ const blankForm = {
 }
 
 export function VpsPlans({ session, role }) {
+  const { lang } = useLang()
+  const CYCLE_META = {
+    monthly: { label: tr(lang, 'vpsp_cycle_monthly'), months: 1, suffix: tr(lang, 'vpsp_suffix_mo') },
+    '3months': { label: tr(lang, 'vpsp_cycle_3months'), months: 3, suffix: tr(lang, 'vpsp_suffix_3mo') },
+    '6months': { label: tr(lang, 'vpsp_cycle_6months'), months: 6, suffix: tr(lang, 'vpsp_suffix_6mo') },
+    yearly: { label: tr(lang, 'vpsp_cycle_yearly'), months: 12, suffix: tr(lang, 'vpsp_suffix_yr') },
+  }
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -83,7 +87,7 @@ export function VpsPlans({ session, role }) {
       const j = await manageApi(session, 'product.list', { product_type: 'vps', limit: 500, offset: 0 })
       const list = (j.items || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
       setPlans(list)
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -143,15 +147,15 @@ export function VpsPlans({ session, role }) {
   }
 
   const closeDrawer = () => {
-    if (dirty && !confirm('Unsaved changes will be lost. Close anyway?')) return
+    if (dirty && !confirm(tr(lang, 'vpsp_unsaved'))) return
     setDrawer(null); setDirty(false)
   }
 
   const buildPayload = () => {
     const base = Number(form.selling_price) || 0
-    if (base < 0) throw new Error('Price cannot be negative')
+    if (base < 0) throw new Error(tr(lang, 'vpsp_price_negative'))
     for (const [k, c] of Object.entries(form.billing_cycles)) {
-      if (c.discount < 0 || c.discount > 100) throw new Error(`${CYCLE_META[k].label} discount must be 0–100`)
+      if (c.discount < 0 || c.discount > 100) throw new Error(`${CYCLE_META[k].label} ${tr(lang, 'vpsp_discount_range')}`)
     }
     const specs = {
       country: form.country, location: form.location, isp: form.isp, product_url: form.product_url,
@@ -174,8 +178,8 @@ export function VpsPlans({ session, role }) {
   }
 
   const save = async () => {
-    if (!form.name.trim()) return alert('Plan name দিন')
-    if (!form.selling_price) return alert('Monthly price দিন')
+    if (!form.name.trim()) return alert(tr(lang, 'vpsp_plan_name_required'))
+    if (!form.selling_price) return alert(tr(lang, 'vpsp_price_required'))
     setBusy('save')
     try {
       const payload = buildPayload()
@@ -186,16 +190,16 @@ export function VpsPlans({ session, role }) {
       }
       setDrawer(null); setDirty(false)
       load()
-      alert('✅ VPS plan saved')
-    } catch (ex) { alert('❌ ' + ex.message) }
+      alert(tr(lang, 'vpsp_saved'))
+    } catch (ex) { alert(ex.message) }
     setBusy(null)
   }
 
   const del = async (p) => {
-    if (!confirm(`"${p.name}" VPS plan delete করবেন?`)) return
+    if (!confirm(`"${p.name}" ` + tr(lang, 'vpsp_delete_confirm'))) return
     setBusy(p.id)
     try { await manageApi(session, 'product.delete', { id: p.id }); load() }
-    catch (e) { alert('❌ ' + e.message) }
+    catch (e) { alert(e.message) }
     setBusy(null)
   }
 
@@ -203,27 +207,27 @@ export function VpsPlans({ session, role }) {
     setBusy(p.id)
     try {
       await manageApi(session, 'product.create', {
-        sku: (p.sku || '') + '-COPY', name: p.name + ' (Copy)', description: p.description,
+        sku: (p.sku || '') + '-COPY', name: p.name + ' ' + tr(lang, 'vpsp_copy_suffix'), description: p.description,
         category: 'VPS', product_type: 'vps', selling_price: p.selling_price,
         currency: p.currency, stock_qty: p.stock_qty, specs: p.specs, is_popular: false,
         sort_order: (p.sort_order || 0) + 1, features: p.features,
       })
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const togglePopular = async (p) => {
     setBusy(p.id)
     try { await manageApi(session, 'product.update', { id: p.id, is_popular: !p.is_popular }); load() }
-    catch (e) { alert('❌ ' + e.message) }
+    catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const toggleStatus = async (p) => {
     setBusy(p.id)
     try { await manageApi(session, 'product.set_status', { id: p.id, status: p.status === 'active' ? 'inactive' : 'active' }); load() }
-    catch (e) { alert('❌ ' + e.message) }
+    catch (e) { alert(e.message) }
     setBusy(null)
   }
 
@@ -236,13 +240,13 @@ export function VpsPlans({ session, role }) {
       await manageApi(session, 'product.update', { id: p.id, sort_order: swapWith.sort_order ?? idx + dir })
       await manageApi(session, 'product.update', { id: swapWith.id, sort_order: p.sort_order ?? idx })
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const uploadImage = async (file) => {
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) return alert('Image must be under 5MB')
+    if (file.size > 5 * 1024 * 1024) return alert(tr(lang, 'vpsp_image_size'))
     setBusy('upload')
     try {
       const ext = file.name.split('.').pop().toLowerCase()
@@ -251,7 +255,7 @@ export function VpsPlans({ session, role }) {
       if (error) throw error
       const { data } = supabase.storage.from('cashskillbd').getPublicUrl(path)
       setF({ image_url: data.publicUrl })
-    } catch (e) { alert('❌ Upload failed: ' + e.message) }
+    } catch (e) { alert(tr(lang, 'vpsp_upload_failed') + ' ' + e.message) }
     setBusy(null)
   }
 
@@ -277,18 +281,18 @@ export function VpsPlans({ session, role }) {
   }
 
   const stats = [
-    { label: 'Total Plans', value: total.toLocaleString(), desc: 'All VPS plans', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🗄' },
-    { label: 'Active Plans', value: active.toLocaleString(), desc: 'Currently active', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '▶' },
-    { label: 'Total In Stock', value: totalStock.toLocaleString(), desc: 'Ready to deploy', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
-    { label: 'Out of Stock', value: outOfStock.toLocaleString(), desc: 'Temporarily unavailable', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📁' },
+    { label: tr(lang, 'vpsp_stat_total_label'), value: total.toLocaleString(), desc: tr(lang, 'vpsp_stat_total_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🗄' },
+    { label: tr(lang, 'vpsp_stat_active_label'), value: active.toLocaleString(), desc: tr(lang, 'vpsp_stat_active_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '▶' },
+    { label: tr(lang, 'vpsp_stat_stock_label'), value: totalStock.toLocaleString(), desc: tr(lang, 'vpsp_stat_stock_desc'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
+    { label: tr(lang, 'vpsp_stat_oos_label'), value: outOfStock.toLocaleString(), desc: tr(lang, 'vpsp_stat_oos_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📁' },
   ]
 
   const TABS = [
-    { id: 'basic', label: 'Basic Info' },
-    { id: 'pricing', label: 'Pricing & Billing' },
-    { id: 'specs', label: 'Specifications' },
-    { id: 'config', label: 'Configuration' },
-    { id: 'media', label: 'Media & Status' },
+    { id: 'basic', label: tr(lang, 'vpsp_tab_basic') },
+    { id: 'pricing', label: tr(lang, 'vpsp_tab_pricing') },
+    { id: 'specs', label: tr(lang, 'vpsp_tab_specs') },
+    { id: 'config', label: tr(lang, 'vpsp_tab_config') },
+    { id: 'media', label: tr(lang, 'vpsp_tab_media') },
   ]
 
   return (
@@ -298,18 +302,18 @@ export function VpsPlans({ session, role }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>🗄</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>VPS Plans Management</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage VPS plans, pricing, billing cycles and server configurations.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'vpsp_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'vpsp_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
-          <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>↓ Export ▾</button>
+          <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>↓ {tr(lang, 'vpsp_export')} ▾</button>
           {exportOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 160, marginTop: 6, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 10, minWidth: 150 }}>
-              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Export as CSV</button>
+              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_export_csv')}</button>
             </div>
           )}
-          <button onClick={openCreate} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>+ Add VPS Plan</button>
+          <button onClick={openCreate} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>+ {tr(lang, 'vpsp_add_plan')}</button>
         </div>
       </div>
 
@@ -330,23 +334,23 @@ export function VpsPlans({ session, role }) {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-        <input placeholder="Search by plan name, location, ISP or specifications…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'vpsp_search_placeholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={countryF} onChange={e => { setCountryF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Countries</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_all_countries')}</option>
           {COUNTRY_TABS.filter(t => t !== 'All').map(t => <option key={t} value={t} style={{ background: '#1a0d0e' }}>{t}</option>)}
         </select>
         <select value={ispF} onChange={e => { setIspF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All ISPs</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_all_isps')}</option>
           {isps.map(i => <option key={i} value={i} style={{ background: '#1a0d0e' }}>{i}</option>)}
         </select>
         <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
-          <option value="active" style={{ background: '#1a0d0e' }}>Active</option>
-          <option value="inactive" style={{ background: '#1a0d0e' }}>Inactive</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_all_statuses')}</option>
+          <option value="active" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_active')}</option>
+          <option value="inactive" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_inactive')}</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'vpsp_clear_filters')}</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'vpsp_refresh')}</button>
       </div>
 
       {/* Country Tabs */}
@@ -359,7 +363,7 @@ export function VpsPlans({ session, role }) {
             <button key={t} onClick={() => { setTabF(t); setPage(1) }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, cursor: 'pointer', border: active ? '1px solid rgba(232,35,42,.6)' : '1px solid rgba(255,255,255,.1)', background: active ? 'rgba(232,35,42,.15)' : 'rgba(255,255,255,.03)', color: active ? '#fff' : 'var(--silver)', fontSize: '.85rem', fontWeight: active ? 600 : 400 }}>
               {flag && <img src={flag} alt="" style={{ width: 20, height: 14, borderRadius: 2, objectFit: 'cover' }} />}
               {t === 'Others' && <span style={{ fontSize: 14 }}>🌐</span>}
-              {t} ({count})
+              {t === 'All' ? tr(lang, 'vpsp_tab_all') : t === 'Others' ? tr(lang, 'vpsp_tab_others') : t} ({count})
             </button>
           )
         })}
@@ -367,11 +371,11 @@ export function VpsPlans({ session, role }) {
 
       {/* Cards Grid */}
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'vpsp_loading')}</div>
       ) : pageItems.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: 'rgba(255,255,255,.02)', borderRadius: 14, border: '1px solid rgba(255,255,255,.06)' }}>
-          <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>No VPS plans found</div>
-          <div style={{ fontSize: '.85rem' }}>No plans match your filters. Add a new VPS plan to get started.</div>
+          <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'vpsp_no_results_title')}</div>
+          <div style={{ fontSize: '.85rem' }}>{tr(lang, 'vpsp_no_results_desc')}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
@@ -387,15 +391,15 @@ export function VpsPlans({ session, role }) {
             const discountPct = origMonthly && origMonthly > base ? Math.round((1 - base / origMonthly) * 100) : 0
             const specList = Array.isArray(s.spec_list) ? s.spec_list.filter(x => x.k.trim()) : [
               s.cpu && { k: 'CPU', v: s.cpu }, s.ram && { k: 'RAM', v: s.ram }, s.storage && { k: 'Storage', v: s.storage },
-              s.os && { k: 'OS', v: s.os }, s.admin_access && s.admin_access !== 'No' && { k: 'Admin', v: s.admin_access },
-              s.ddos_protection && s.ddos_protection !== 'No' && { k: 'DDoS', v: s.ddos_protection },
-              s.bandwidth && { k: 'Bandwidth', v: `${s.bandwidth} @ ${s.port_speed || ''}` },
-              s.dedicated_ip && { k: 'Dedicated IP', v: `${s.dedicated_ip} (${s.isp || '—'})` },
+              s.os && { k: 'OS', v: s.os }, s.admin_access && s.admin_access !== 'No' && { k: tr(lang, 'vpsp_spec_admin'), v: s.admin_access },
+              s.ddos_protection && s.ddos_protection !== 'No' && { k: tr(lang, 'vpsp_spec_ddos'), v: s.ddos_protection },
+              s.bandwidth && { k: tr(lang, 'vpsp_spec_bandwidth'), v: `${s.bandwidth} @ ${s.port_speed || ''}` },
+              s.dedicated_ip && { k: tr(lang, 'vpsp_spec_dedicated_ip'), v: `${s.dedicated_ip} (${s.isp || '—'})` },
             ].filter(Boolean)
             return (
               <div key={p.id} style={{ background: 'linear-gradient(180deg, #0b0b10, #080405)', border: p.is_popular ? '1px solid rgba(192,132,252,.5)' : '1px solid rgba(232,35,42,.25)', borderRadius: 14, padding: 18, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {p.is_popular && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, background: 'linear-gradient(135deg, #c084fc, #8b5cf6)', color: '#fff', fontSize: '.72rem', fontWeight: 700, padding: '5px 14px', borderBottomRightRadius: 12 }}>Most Popular</div>
+                  <div style={{ position: 'absolute', top: 0, left: 0, background: 'linear-gradient(135deg, #c084fc, #8b5cf6)', color: '#fff', fontSize: '.72rem', fontWeight: 700, padding: '5px 14px', borderBottomRightRadius: 12 }}>{tr(lang, 'vpsp_most_popular')}</div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, marginTop: p.is_popular ? 14 : 0 }}>
                   {p.image_url ? (
@@ -407,21 +411,21 @@ export function VpsPlans({ session, role }) {
                 </div>
                 <div style={{ marginBottom: 4 }}>
                   <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: '.72rem', fontWeight: 600, background: stock <= 0 ? 'rgba(232,35,42,.15)' : 'rgba(46,204,113,.15)', color: stock <= 0 ? '#ff6b6b' : '#2ecc71', border: `1px solid ${stock <= 0 ? 'rgba(232,35,42,.4)' : 'rgba(46,204,113,.4)'}` }}>
-                    ● {stock} in stock
+                    ● {stock} {tr(lang, 'vpsp_in_stock')}
                   </span>
                 </div>
                 <div style={{ fontWeight: 700, color: '#fff', fontSize: '1rem', marginBottom: 2 }}>{p.name}</div>
-                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 12 }}>{p.description || `${country} VPS Server`}</div>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 12 }}>{p.description || `${country} ${tr(lang, 'vpsp_vps_server')}`}</div>
                 <div style={{ marginBottom: 4 }}>
                   <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{p.currency === 'USD' ? '$' : '৳'}{base.toFixed(2)}</span>
-                  <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}> /mo</span>
+                  <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'vpsp_per_month')}</span>
                 </div>
                 <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 2 }}>
-                  billed ${(annual).toFixed(2)}/yr
+                  {tr(lang, 'vpsp_billed')} ${(annual).toFixed(2)}{tr(lang, 'vpsp_per_year')}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                   {origMonthly && <span style={{ fontSize: '.82rem', color: 'var(--muted)', textDecoration: 'line-through' }}>${origMonthly.toFixed(2)}</span>}
-                  {discountPct > 0 && <span style={{ fontSize: '.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(46,204,113,.15)', color: '#2ecc71' }}>Save {discountPct}%</span>}
+                  {discountPct > 0 && <span style={{ fontSize: '.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(46,204,113,.15)', color: '#2ecc71' }}>{tr(lang, 'vpsp_save')} {discountPct}%</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14, flex: 1 }}>
                   {specList.slice(0, 8).map((line, idx) => (
@@ -429,21 +433,21 @@ export function VpsPlans({ session, role }) {
                       <span style={{ color: '#2ecc71', fontWeight: 700 }}>✓</span>{line.v ? `${line.k}: ${line.v}` : line.k}
                     </div>
                   ))}
-                  {specList.length === 0 && <div style={{ fontSize: '.8rem', color: 'var(--muted)' }}>No specs configured</div>}
+                  {specList.length === 0 && <div style={{ fontSize: '.8rem', color: 'var(--muted)' }}>{tr(lang, 'vpsp_no_specs')}</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setDetail(p)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '.85rem' }}>View Details</button>
+                  <button onClick={() => setDetail(p)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'vpsp_view_details')}</button>
                   <button onClick={() => setMenuOpen(menuOpen === p.id ? null : p.id)} style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 16 }}>⋯</button>
                 </div>
                 {menuOpen === p.id && (
                   <div style={{ position: 'absolute', bottom: 60, right: 18, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 20, minWidth: 170, boxShadow: '0 8px 24px rgba(0,0,0,.5)' }}>
-                    <button onClick={() => { setMenuOpen(null); openEdit(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Edit Plan</button>
-                    <button onClick={() => { setMenuOpen(null); duplicate(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Duplicate</button>
-                    <button onClick={() => { setMenuOpen(null); togglePopular(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{p.is_popular ? 'Remove Most Popular' : 'Mark Most Popular'}</button>
-                    <button onClick={() => { setMenuOpen(null); toggleStatus(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{p.status === 'active' ? 'Deactivate' : 'Activate'}</button>
-                    <button onClick={() => { setMenuOpen(null); moveOrder(p, -1) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Move Up</button>
-                    <button onClick={() => { setMenuOpen(null); moveOrder(p, 1) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Move Down</button>
-                    <button onClick={() => { setMenuOpen(null); del(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Delete</button>
+                    <button onClick={() => { setMenuOpen(null); openEdit(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_edit_plan')}</button>
+                    <button onClick={() => { setMenuOpen(null); duplicate(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_duplicate')}</button>
+                    <button onClick={() => { setMenuOpen(null); togglePopular(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{p.is_popular ? tr(lang, 'vpsp_remove_popular') : tr(lang, 'vpsp_mark_popular')}</button>
+                    <button onClick={() => { setMenuOpen(null); toggleStatus(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{p.status === 'active' ? tr(lang, 'vpsp_deactivate') : tr(lang, 'vpsp_activate')}</button>
+                    <button onClick={() => { setMenuOpen(null); moveOrder(p, -1) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_move_up')}</button>
+                    <button onClick={() => { setMenuOpen(null); moveOrder(p, 1) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_move_down')}</button>
+                    <button onClick={() => { setMenuOpen(null); del(p) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'vpsp_delete')}</button>
                   </div>
                 )}
               </div>
@@ -454,7 +458,7 @@ export function VpsPlans({ session, role }) {
 
       {/* Pagination */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, flexWrap: 'wrap', gap: 10 }}>
-        <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, list.length)} of {list.length.toLocaleString()} VPS plans</span>
+        <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'vpsp_showing')} {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'vpsp_to')} {Math.min(curPage * pageSize, list.length)} {tr(lang, 'vpsp_of')} {list.length.toLocaleString()} {tr(lang, 'vpsp_plans_word')}</span>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
           <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -467,7 +471,7 @@ export function VpsPlans({ session, role }) {
           <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
           <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
           <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-            {[5, 10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+            {[5, 10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} {tr(lang, 'vpsp_per_page')}</option>)}
           </select>
         </div>
       </div>
@@ -477,17 +481,17 @@ export function VpsPlans({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>VPS Plan Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'vpsp_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Name: </span><b style={{ color: '#fff' }}>{detail.name}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Description: </span><span style={{ color: 'var(--silver)' }}>{detail.description || '—'}</span></div>
-              <div><span style={{ color: 'var(--muted)' }}>Country: </span><b style={{ color: '#fff' }}>{countryOf(detail)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>ISP: </span><b style={{ color: '#fff' }}>{specsOf(detail).isp || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Price: </span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{Number(detail.selling_price || 0).toFixed(2)} /mo</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Stock: </span><b style={{ color: '#fff' }}>{detail.stock_qty ?? 0}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Status: </span><b style={{ color: '#fff' }}>{detail.status}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_name')} </span><b style={{ color: '#fff' }}>{detail.name}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_desc')} </span><span style={{ color: 'var(--silver)' }}>{detail.description || '—'}</span></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_country')} </span><b style={{ color: '#fff' }}>{countryOf(detail)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_isp')} </span><b style={{ color: '#fff' }}>{specsOf(detail).isp || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_price')} </span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{Number(detail.selling_price || 0).toFixed(2)} {tr(lang, 'vpsp_per_month')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_stock')} </span><b style={{ color: '#fff' }}>{detail.stock_qty ?? 0}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'vpsp_detail_status')} </span><b style={{ color: '#fff' }}>{detail.status === 'active' ? tr(lang, 'vpsp_active') : tr(lang, 'vpsp_inactive')}</b></div>
             </div>
           </div>
         </div>
@@ -501,8 +505,8 @@ export function VpsPlans({ session, role }) {
             <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem' }}>{drawer.mode === 'edit' ? 'Edit VPS Plan' : 'Add VPS Plan'}</h3>
-                  <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.82rem' }}>Update plan details, pricing, specifications and server information.</p>
+                  <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem' }}>{drawer.mode === 'edit' ? tr(lang, 'vpsp_drawer_edit') : tr(lang, 'vpsp_drawer_add')}</h3>
+                  <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.82rem' }}>{tr(lang, 'vpsp_drawer_subtitle')}</p>
                 </div>
                 <button onClick={closeDrawer} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 22 }}>×</button>
               </div>
@@ -517,32 +521,32 @@ export function VpsPlans({ session, role }) {
               {tab === 'basic' && (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div style={{ gridColumn: 'span 2' }}><label style={lbl}>Plan Name *</label><input value={form.name} onChange={e => setF({ name: e.target.value })} style={inp} placeholder="e.g. USA ADMIN RDP #3" /></div>
+                    <div style={{ gridColumn: 'span 2' }}><label style={lbl}>{tr(lang, 'vpsp_plan_name')}</label><input value={form.name} onChange={e => setF({ name: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_plan_name_placeholder')} /></div>
                   </div>
-                  <div><label style={lbl}>Short Description *</label><textarea value={form.description} onChange={e => setF({ description: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder="Performance-focused Windows Remote Desktop" /></div>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_short_desc')}</label><textarea value={form.description} onChange={e => setF({ description: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder={tr(lang, 'vpsp_short_desc_placeholder')} /></div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div><label style={lbl}>Country *</label><input value={form.country} onChange={e => setF({ country: e.target.value })} style={inp} placeholder="United States" /></div>
-                    <div><label style={lbl}>Server Location *</label><input value={form.location} onChange={e => setF({ location: e.target.value })} style={inp} placeholder="New York, NY" /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_country')}</label><input value={form.country} onChange={e => setF({ country: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_country_placeholder')} /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_server_location')}</label><input value={form.location} onChange={e => setF({ location: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_location_placeholder')} /></div>
                   </div>
-                  <div><label style={lbl}>ISP / Provider *</label><input value={form.isp} onChange={e => setF({ isp: e.target.value })} style={inp} placeholder="e.g. Comcast" /></div>
-                  <div><label style={lbl}>Product URL (Optional)</label><input value={form.product_url} onChange={e => setF({ product_url: e.target.value })} style={inp} placeholder="https://…" /></div>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_isp_provider')}</label><input value={form.isp} onChange={e => setF({ isp: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_isp_placeholder')} /></div>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_product_url')}</label><input value={form.product_url} onChange={e => setF({ product_url: e.target.value })} style={inp} placeholder="https://…" /></div>
                 </>
               )}
 
               {tab === 'pricing' && (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <b style={{ color: '#fff' }}>Pricing & Billing</b>
+                    <b style={{ color: '#fff' }}>{tr(lang, 'vpsp_pricing_heading')}</b>
                     <select value={form.currency} onChange={e => setF({ currency: e.target.value })} style={{ ...inp, width: 'auto', cursor: 'pointer' }}>
                       <option value="USD" style={{ background: '#1a0d0e' }}>USD ($)</option>
                       <option value="BDT" style={{ background: '#1a0d0e' }}>BDT (৳)</option>
                     </select>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div><label style={lbl}>Monthly Price *</label><input type="number" step="0.01" min="0" value={form.selling_price} onChange={e => setF({ selling_price: e.target.value })} style={inp} /></div>
-                    <div><label style={lbl}>Original Price (Optional)</label><input type="number" step="0.01" min="0" value={form.original_price} onChange={e => setF({ original_price: e.target.value })} style={inp} placeholder="Strike-through price" /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_monthly_price')}</label><input type="number" step="0.01" min="0" value={form.selling_price} onChange={e => setF({ selling_price: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_original_price')}</label><input type="number" step="0.01" min="0" value={form.original_price} onChange={e => setF({ original_price: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_strike_placeholder')} /></div>
                   </div>
-                  <div><label style={lbl}>Billing Cycle Discounts</label>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_billing_discounts')}</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {Object.entries(CYCLE_META).map(([key, meta]) => {
                         const c = form.billing_cycles[key] || { enabled: true, discount: 0 }
@@ -556,12 +560,12 @@ export function VpsPlans({ session, role }) {
                             </label>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                               <input type="number" min="0" max="100" value={c.discount} onChange={e => setF({ billing_cycles: { ...form.billing_cycles, [key]: { ...c, discount: Number(e.target.value) } } })} style={{ ...inp, padding: '6px 8px', fontSize: '.85rem' }} />
-                              <span style={{ fontSize: '.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>% off</span>
+                              <span style={{ fontSize: '.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{tr(lang, 'vpsp_percent_off')}</span>
                             </div>
                             <div style={{ marginTop: 6, fontSize: '.85rem', color: '#fff', fontWeight: 600 }}>
                               {form.currency === 'USD' ? '$' : '৳'}{discPrice.toFixed(2)}{meta.suffix}
                             </div>
-                            <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>Total: {form.currency === 'USD' ? '$' : '৳'}{discPrice.toFixed(2)} for {meta.months} mo</div>
+                            <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{tr(lang, 'vpsp_total')} {form.currency === 'USD' ? '$' : '৳'}{discPrice.toFixed(2)} {tr(lang, 'vpsp_for')} {meta.months} {tr(lang, 'vpsp_mo_unit')}</div>
                           </div>
                         )
                       })}
@@ -573,27 +577,27 @@ export function VpsPlans({ session, role }) {
               {tab === 'specs' && (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <b style={{ color: '#fff' }}>Specifications</b>
-                    <button onClick={() => setF({ specs: [...form.specs, { k: '', v: '' }] })} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.82rem' }}>+ Add Spec</button>
+                    <b style={{ color: '#fff' }}>{tr(lang, 'vpsp_specs_heading')}</b>
+                    <button onClick={() => setF({ specs: [...form.specs, { k: '', v: '' }] })} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.82rem' }}>{tr(lang, 'vpsp_add_spec')}</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {form.specs.map((s, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input value={s.k} onChange={e => { const arr = [...form.specs]; arr[idx].k = e.target.value; setF({ specs: arr }) }} style={{ ...inp, flex: 1 }} placeholder="Label (e.g. CPU)" />
-                        <input value={s.v} onChange={e => { const arr = [...form.specs]; arr[idx].v = e.target.value; setF({ specs: arr }) }} style={{ ...inp, flex: 1 }} placeholder="Value (e.g. 4 vCores)" />
+                        <input value={s.k} onChange={e => { const arr = [...form.specs]; arr[idx].k = e.target.value; setF({ specs: arr }) }} style={{ ...inp, flex: 1 }} placeholder={tr(lang, 'vpsp_spec_label_placeholder')} />
+                        <input value={s.v} onChange={e => { const arr = [...form.specs]; arr[idx].v = e.target.value; setF({ specs: arr }) }} style={{ ...inp, flex: 1 }} placeholder={tr(lang, 'vpsp_spec_value_placeholder')} />
                         <button onClick={() => { const arr = form.specs.filter((_, i) => i !== idx); setF({ specs: arr }) }} style={{ padding: '8px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer' }}>×</button>
                       </div>
                     ))}
                   </div>
                   <div>
-                    <label style={lbl}>Customer-Facing Features (one per line)</label>
+                    <label style={lbl}>{tr(lang, 'vpsp_features_label')}</label>
                     {form.features.map((f, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                        <input value={f} onChange={e => { const arr = [...form.features]; arr[idx] = e.target.value; setF({ features: arr }) }} style={{ ...inp, flex: 1 }} placeholder="Feature" />
+                        <input value={f} onChange={e => { const arr = [...form.features]; arr[idx] = e.target.value; setF({ features: arr }) }} style={{ ...inp, flex: 1 }} placeholder={tr(lang, 'vpsp_feature_placeholder')} />
                         <button onClick={() => setF({ features: form.features.filter((_, i) => i !== idx) })} style={{ padding: '8px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer' }}>×</button>
                       </div>
                     ))}
-                    <button onClick={() => setF({ features: [...form.features, ''] })} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>+ Add Feature</button>
+                    <button onClick={() => setF({ features: [...form.features, ''] })} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>{tr(lang, 'vpsp_add_feature')}</button>
                   </div>
                 </>
               )}
@@ -601,21 +605,21 @@ export function VpsPlans({ session, role }) {
               {tab === 'config' && (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div><label style={lbl}>Stock Quantity</label><input type="number" min="0" value={form.stock_qty} onChange={e => setF({ stock_qty: e.target.value })} style={inp} /></div>
-                    <div><label style={lbl}>Sort Order</label><input type="number" value={form.sort_order} onChange={e => setF({ sort_order: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_stock_qty')}</label><input type="number" min="0" value={form.stock_qty} onChange={e => setF({ stock_qty: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>{tr(lang, 'vpsp_sort_order')}</label><input type="number" value={form.sort_order} onChange={e => setF({ sort_order: e.target.value })} style={inp} /></div>
                   </div>
                   <div>
-                    <label style={lbl}>Status</label>
+                    <label style={lbl}>{tr(lang, 'vpsp_status_label')}</label>
                     <select value={form.status} onChange={e => setF({ status: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
-                      <option value="active" style={{ background: '#1a0d0e' }}>Active</option>
-                      <option value="inactive" style={{ background: '#1a0d0e' }}>Inactive</option>
+                      <option value="active" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_active')}</option>
+                      <option value="inactive" style={{ background: '#1a0d0e' }}>{tr(lang, 'vpsp_inactive')}</option>
                     </select>
-                    <small style={{ color: 'var(--muted)', fontSize: '.75rem' }}>Inactive plans will not be shown to customers.</small>
+                    <small style={{ color: 'var(--muted)', fontSize: '.75rem' }}>{tr(lang, 'vpsp_inactive_note')}</small>
                   </div>
                   <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,.03)', borderRadius: 10, cursor: 'pointer' }}>
                     <span>
-                      <span style={{ display: 'block', fontWeight: 600, color: '#fff', fontSize: '.9rem' }}>Mark as Most Popular</span>
-                      <span style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Show "Most Popular" badge on this plan</span>
+                      <span style={{ display: 'block', fontWeight: 600, color: '#fff', fontSize: '.9rem' }}>{tr(lang, 'vpsp_mark_popular_label')}</span>
+                      <span style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{tr(lang, 'vpsp_popular_hint')}</span>
                     </span>
                     <input type="checkbox" checked={form.is_popular} onChange={e => setF({ is_popular: e.target.checked })} style={{ accentColor: '#e8232a', width: 20, height: 20 }} />
                   </label>
@@ -624,31 +628,31 @@ export function VpsPlans({ session, role }) {
 
               {tab === 'media' && (
                 <>
-                  <div><label style={lbl}>Plan Image</label>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_media_image')}</label>
                     {form.image_url ? (
                       <div style={{ position: 'relative', marginBottom: 10 }}>
                         <img src={form.image_url} alt={form.image_alt || 'Plan image'} style={{ width: '100%', maxHeight: 180, objectFit: 'contain', borderRadius: 10, background: 'rgba(255,255,255,.03)' }} />
-                        <button onClick={() => setF({ image_url: '' })} style={{ position: 'absolute', top: 8, right: 8, padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(0,0,0,.6)', color: '#ff6b6b', cursor: 'pointer' }}>Remove</button>
+                        <button onClick={() => setF({ image_url: '' })} style={{ position: 'absolute', top: 8, right: 8, padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(0,0,0,.6)', color: '#ff6b6b', cursor: 'pointer' }}>{tr(lang, 'vpsp_remove')}</button>
                       </div>
                     ) : (
-                      <div style={{ padding: 30, textAlign: 'center', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 10, color: 'var(--muted)', fontSize: '.85rem', marginBottom: 10 }}>No image uploaded</div>
+                      <div style={{ padding: 30, textAlign: 'center', border: '1px dashed rgba(255,255,255,.2)', borderRadius: 10, color: 'var(--muted)', fontSize: '.85rem', marginBottom: 10 }}>{tr(lang, 'vpsp_no_image')}</div>
                     )}
                     <label style={{ display: 'block', padding: '10px', textAlign: 'center', borderRadius: 9, border: '1px solid rgba(232,35,42,.4)', color: '#ff6b6b', cursor: 'pointer', fontSize: '.88rem', fontWeight: 600 }}>
-                      {busy === 'upload' ? 'Uploading…' : 'Change Image (Upload)'}
+                      {busy === 'upload' ? tr(lang, 'vpsp_uploading') : tr(lang, 'vpsp_change_image')}
                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => uploadImage(e.target.files[0])} />
                     </label>
-                    <small style={{ color: 'var(--muted)', fontSize: '.72rem' }}>Recommended: 800×600 (PNG, JPG, WebP), max 5MB</small>
+                    <small style={{ color: 'var(--muted)', fontSize: '.72rem' }}>{tr(lang, 'vpsp_image_hint')}</small>
                   </div>
-                  <div><label style={lbl}>Image URL (or paste URL)</label><input value={form.image_url} onChange={e => setF({ image_url: e.target.value })} style={inp} placeholder="https://…" /></div>
-                  <div><label style={lbl}>Image Alt Text</label><input value={form.image_alt} onChange={e => setF({ image_alt: e.target.value })} style={inp} placeholder="Alt text for accessibility" /></div>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_image_url_label')}</label><input value={form.image_url} onChange={e => setF({ image_url: e.target.value })} style={inp} placeholder="https://…" /></div>
+                  <div><label style={lbl}>{tr(lang, 'vpsp_image_alt_label')}</label><input value={form.image_alt} onChange={e => setF({ image_alt: e.target.value })} style={inp} placeholder={tr(lang, 'vpsp_image_alt_placeholder')} /></div>
                 </>
               )}
             </div>
 
             <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={closeDrawer} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={closeDrawer} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>{tr(lang, 'vpsp_cancel')}</button>
               <button onClick={save} disabled={busy === 'save'} style={{ padding: '11px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-                {busy === 'save' ? 'Saving…' : 'Save Changes'}
+                {busy === 'save' ? tr(lang, 'vpsp_saving') : tr(lang, 'vpsp_save_changes')}
               </button>
             </div>
           </div>

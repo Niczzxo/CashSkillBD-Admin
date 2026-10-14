@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
 const PAY_METHODS = ['bKash', 'Nagad', 'Rocket', 'Bank', 'USDT', 'Cash', 'Other']
 
 export function Dollar({ session, role }) {
+  const { lang } = useLang()
   const [rate, setRate] = useState(null)
   const [txns, setTxns] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,7 +34,7 @@ export function Dollar({ session, role }) {
       ])
       setRate(r.rate)
       setTxns(t.items || [])
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -83,10 +86,10 @@ export function Dollar({ session, role }) {
 
   const createTxn = async (e) => {
     e.preventDefault()
-    if (!rate) return alert('আগে exchange rate সেট করুন')
-    if (!usdAmt || usdAmt <= 0) return alert('সঠিক USD পরিমাণ দিন')
-    if (txnType === 'sell' && usdAmt > stock) return alert(`Stock-এ পর্যাপ্ত USD নেই। Available: $${stock.toFixed(2)}`)
-    if (!confirm(`${txnType === 'buy' ? 'ক্রয়' : 'বিক্রয়'} — $${usdAmt.toFixed(2)} @ ৳${currentRate.toFixed(2)} = ৳${totalBdt.toLocaleString('en-IN')}?\n\nConfirm করবেন?`)) return
+    if (!rate) return alert(tr(lang, 'dollar_err_rate_first'))
+    if (!usdAmt || usdAmt <= 0) return alert(tr(lang, 'dollar_err_usd_amount'))
+    if (txnType === 'sell' && usdAmt > stock) return alert(tr(lang, 'dollar_err_insufficient_stock') + ` $${stock.toFixed(2)}`)
+    if (!confirm(`${txnType === 'buy' ? tr(lang, 'dollar_buy') : tr(lang, 'dollar_sell')} — $${usdAmt.toFixed(2)} @ ৳${currentRate.toFixed(2)} = ৳${totalBdt.toLocaleString('en-IN')}?\n\n${tr(lang, 'dollar_confirm_q')}`)) return
     setBusy('create')
     try {
       await manageApi(session, 'dollar.txn_create', {
@@ -96,52 +99,52 @@ export function Dollar({ session, role }) {
       })
       setTxnForm({ usd_amount: '', reference: '', customer_name: '', notes: '', payment_method: 'bKash' })
       load()
-      alert('✅ লেনদেন যোগ হয়েছে (Pending — approve করতে status change করুন)')
-    } catch (ex) { alert('❌ ' + ex.message) }
+      alert(tr(lang, 'dollar_txn_added'))
+    } catch (ex) { alert(ex.message) }
     setBusy(null)
   }
 
   const updateRate = async () => {
     const buy = Number(rateForm.buy_rate), sell = Number(rateForm.sell_rate)
-    if (!buy || !sell || buy <= 0 || sell <= 0) return alert('সঠিক rate দিন')
-    if (!confirm(`Rate update করবেন?\n\nBuy: ৳${buy.toFixed(2)}\nSell: ৳${sell.toFixed(2)}`)) return
+    if (!buy || !sell || buy <= 0 || sell <= 0) return alert(tr(lang, 'dollar_err_rate'))
+    if (!confirm(`${tr(lang, 'dollar_rate_update_q')}\n\n${tr(lang, 'dollar_buy_rate')}: ৳${buy.toFixed(2)}\n${tr(lang, 'dollar_sell_rate')}: ৳${sell.toFixed(2)}`)) return
     setBusy('rate')
     try {
       await manageApi(session, 'dollar.rate_set', { buy_rate: buy, sell_rate: sell })
       setShowRateModal(false)
       load()
-      alert('✅ Rate updated')
-    } catch (e) { alert('❌ ' + e.message) }
+      alert(tr(lang, 'dollar_rate_updated'))
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const setStatus = async (t, status) => {
-    if (!confirm(`Transaction-এর status "${status}" করবেন?`)) return
+    if (!confirm(`${tr(lang, 'dollar_txn_status_prefix')} "${status}" ${tr(lang, 'dollar_txn_status_suffix')}`)) return
     setBusy(t.id)
     try {
       await manageApi(session, 'dollar.txn_set_status', { id: t.id, status })
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const del = async (t) => {
-    if (t.status === 'completed') return alert('Completed transaction delete করা যাবে না — Refund করুন।')
-    if (!confirm(`Transaction #${t.id} delete করবেন?`)) return
+    if (t.status === 'completed') return alert(tr(lang, 'dollar_err_delete_completed'))
+    if (!confirm(`${tr(lang, 'dollar_txn_delete_prefix')} #${t.id} ${tr(lang, 'dollar_txn_delete_suffix')}`)) return
     setBusy(t.id)
     try {
       await manageApi(session, 'dollar.txn_delete', { id: t.id })
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const saveEdit = async (e) => {
     e.preventDefault()
     if (!editing) return
-    if (editing.status !== 'pending') return alert('শুধু Pending transaction edit করা যাবে')
+    if (editing.status !== 'pending') return alert(tr(lang, 'dollar_err_edit_pending_only'))
     const usd = Number(editForm.usd_amount)
-    if (!usd || usd <= 0) return alert('সঠিক USD পরিমাণ দিন')
+    if (!usd || usd <= 0) return alert(tr(lang, 'dollar_err_usd_amount'))
     setBusy(editing.id)
     try {
       await manageApi(session, 'dollar.txn_update', {
@@ -151,12 +154,12 @@ export function Dollar({ session, role }) {
       })
       setEditing(null)
       load()
-    } catch (ex) { alert('❌ ' + ex.message) }
+    } catch (ex) { alert(ex.message) }
     setBusy(null)
   }
 
   const exportCSV = () => {
-    const header = 'Date,Type,USD Amount,Rate,BDT Amount,Payment Method,Reference,Notes,Status\n'
+    const header = `${tr(lang, 'dollar_csv_date')},${tr(lang, 'dollar_csv_type')},${tr(lang, 'dollar_csv_usd')},${tr(lang, 'dollar_csv_rate')},${tr(lang, 'dollar_csv_bdt')},${tr(lang, 'dollar_csv_payment')},${tr(lang, 'dollar_csv_reference')},${tr(lang, 'dollar_csv_notes')},${tr(lang, 'dollar_csv_status')}\n`
     const rows = list.map(t => `${new Date(t.created_at).toLocaleString('en-GB')},${t.txn_type},${t.usd_amount},${t.rate_snapshot},${t.bdt_amount},${payOf(t)},${t.reference || ''},"${notesOf(t).replace(/"/g, '""')}",${t.status}`).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -176,10 +179,10 @@ export function Dollar({ session, role }) {
   }
 
   const stats = [
-    { label: 'মোট ডলার ক্রয়', value: `$${totalBuyUsd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: `এই মাসে মোট ক্রয়: $${monthBuy.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '$' },
-    { label: 'মোট ডলার বিক্রয়', value: `$${totalSellUsd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: `এই মাসে মোট বিক্রয়: $${monthSell.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '↗' },
-    { label: 'বর্তমান স্টক', value: `$${stock.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: 'অবশিষ্ট ডলার ব্যালেন্স', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '💰' },
-    { label: 'আজকের লেনদেন', value: todayTxns.length.toLocaleString(), desc: `মোট ক্রয় ${todayBuy} | মোট বিক্রয় ${todaySell}`, color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📊' },
+    { label: tr(lang, 'dollar_stat_total_buy'), value: `$${totalBuyUsd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: `${tr(lang, 'dollar_stat_this_month_buy')} $${monthBuy.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '$' },
+    { label: tr(lang, 'dollar_stat_total_sell'), value: `$${totalSellUsd.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: `${tr(lang, 'dollar_stat_this_month_sell')} $${monthSell.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '↗' },
+    { label: tr(lang, 'dollar_stat_stock'), value: `$${stock.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, desc: tr(lang, 'dollar_stat_stock_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '💰' },
+    { label: tr(lang, 'dollar_stat_today'), value: todayTxns.length.toLocaleString(), desc: `${tr(lang, 'dollar_stat_today_buy')} ${todayBuy} | ${tr(lang, 'dollar_stat_today_sell')} ${todaySell}`, color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📊' },
   ]
 
   return (
@@ -188,8 +191,8 @@ export function Dollar({ session, role }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>💲</div>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Dollar ক্রয় / বিক্রয়</h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>ডলার ক্রয় ও বিক্রয়ের রেট ম্যানেজ করুন, নতুন লেনদেন যোগ করুন এবং সকল লেনদেনের ইতিহাস দেখুন।</p>
+          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'dollar_title')}</h2>
+          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'dollar_subtitle')}</p>
         </div>
       </div>
 
@@ -214,78 +217,78 @@ export function Dollar({ session, role }) {
         {/* Current Rate */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <b style={{ color: '#fff' }}>বর্তমান রেট</b>
-            <button onClick={() => { setRateForm({ buy_rate: rate?.buy_rate || '', sell_rate: rate?.sell_rate || '' }); setShowRateModal(true) }} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>রেট রিফ্রেশ</button>
+            <b style={{ color: '#fff' }}>{tr(lang, 'dollar_current_rate')}</b>
+            <button onClick={() => { setRateForm({ buy_rate: rate?.buy_rate || '', sell_rate: rate?.sell_rate || '' }); setShowRateModal(true) }} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>{tr(lang, 'dollar_refresh_rate')}</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div style={{ padding: 16, borderRadius: 12, background: 'rgba(46,204,113,.08)', border: '1px solid rgba(46,204,113,.3)', textAlign: 'center' }}>
-              <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: 6 }}>ক্রয় রেট (USD)</div>
+              <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: 6 }}>{tr(lang, 'dollar_buy_rate_label')}</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>৳ {rate ? Number(rate.buy_rate).toFixed(2) : '—'}</div>
-              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>(1 USD)</div>
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{tr(lang, 'dollar_per_usd')}</div>
             </div>
             <div style={{ padding: 16, borderRadius: 12, background: 'rgba(232,35,42,.08)', border: '1px solid rgba(232,35,42,.3)', textAlign: 'center' }}>
-              <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: 6 }}>বিক্রয় রেট (USD)</div>
+              <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: 6 }}>{tr(lang, 'dollar_sell_rate_label')}</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>৳ {rate ? Number(rate.sell_rate).toFixed(2) : '—'}</div>
-              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>(1 USD)</div>
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{tr(lang, 'dollar_per_usd')}</div>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.78rem', color: 'var(--muted)' }}>
-            <span>সর্বশেষ আপডেট: {rate ? new Date(rate.effective_from).toLocaleString('en-GB') : '—'}</span>
-            <button onClick={() => { setRateForm({ buy_rate: rate?.buy_rate || '', sell_rate: rate?.sell_rate || '' }); setShowRateModal(true) }} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.82rem', fontWeight: 600 }}>রেট আপডেট করুন</button>
+            <span>{tr(lang, 'dollar_last_updated')} {rate ? new Date(rate.effective_from).toLocaleString('en-GB') : '—'}</span>
+            <button onClick={() => { setRateForm({ buy_rate: rate?.buy_rate || '', sell_rate: rate?.sell_rate || '' }); setShowRateModal(true) }} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.82rem', fontWeight: 600 }}>{tr(lang, 'dollar_update_rate')}</button>
           </div>
         </div>
 
         {/* New Transaction */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-            <b style={{ color: '#fff' }}>নতুন লেনদেন যোগ করুন</b>
+            <b style={{ color: '#fff' }}>{tr(lang, 'dollar_new_txn')}</b>
             <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.04)', borderRadius: 9, padding: 3 }}>
-              <button onClick={() => setTxnType('buy')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: txnType === 'buy' ? '#e8232a' : 'transparent', color: '#fff' }}>ডলার ক্রয়</button>
-              <button onClick={() => setTxnType('sell')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: txnType === 'sell' ? 'rgba(255,255,255,.1)' : 'transparent', color: '#fff' }}>ডলার বিক্রয়</button>
+              <button onClick={() => setTxnType('buy')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: txnType === 'buy' ? '#e8232a' : 'transparent', color: '#fff' }}>{tr(lang, 'dollar_buy')}</button>
+              <button onClick={() => setTxnType('sell')} style={{ padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: txnType === 'sell' ? 'rgba(255,255,255,.1)' : 'transparent', color: '#fff' }}>{tr(lang, 'dollar_sell')}</button>
             </div>
           </div>
           <form onSubmit={createTxn} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={lbl}>USD পরিমাণ *</label>
-                <input type="number" step="0.01" min="0" value={txnForm.usd_amount} onChange={e => setTxnForm({ ...txnForm, usd_amount: e.target.value })} style={inp} placeholder="যেমন: 100" />
+                <label style={lbl}>{tr(lang, 'dollar_usd_amount')}</label>
+                <input type="number" step="0.01" min="0" value={txnForm.usd_amount} onChange={e => setTxnForm({ ...txnForm, usd_amount: e.target.value })} style={inp} placeholder={tr(lang, 'dollar_usd_placeholder')} />
               </div>
               <div>
-                <label style={lbl}>রেট (৳) — বর্তমান রেট থেকে</label>
+                <label style={lbl}>{tr(lang, 'dollar_rate_from_current')}</label>
                 <input value={currentRate ? currentRate.toFixed(2) : '—'} disabled style={{ ...inp, opacity: 0.6 }} />
               </div>
             </div>
             <div>
-              <label style={lbl}>মোট টাকা (৳)</label>
+              <label style={lbl}>{tr(lang, 'dollar_total_bdt')}</label>
               <input value={totalBdt.toLocaleString('en-IN', { minimumFractionDigits: 2 })} disabled style={{ ...inp, opacity: 0.6, fontWeight: 700 }} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={lbl}>পেমেন্ট মাধ্যম *</label>
+                <label style={lbl}>{tr(lang, 'dollar_payment_method')}</label>
                 <select value={txnForm.payment_method} onChange={e => setTxnForm({ ...txnForm, payment_method: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
                   {PAY_METHODS.map(m => <option key={m} value={m} style={{ background: '#1a0d0e' }}>{m}</option>)}
                 </select>
               </div>
               <div>
-                <label style={lbl}>কাস্টমার নাম</label>
-                <input value={txnForm.customer_name} onChange={e => setTxnForm({ ...txnForm, customer_name: e.target.value })} style={inp} placeholder="কাস্টমার নাম" />
+                <label style={lbl}>{tr(lang, 'dollar_customer_name')}</label>
+                <input value={txnForm.customer_name} onChange={e => setTxnForm({ ...txnForm, customer_name: e.target.value })} style={inp} placeholder={tr(lang, 'dollar_customer_placeholder')} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={lbl}>রেফারেন্স / ট্রানজেকশন আইডি</label>
-                <input value={txnForm.reference} onChange={e => setTxnForm({ ...txnForm, reference: e.target.value })} style={inp} placeholder="TrxID / রেফারেন্স নম্বর" />
+                <label style={lbl}>{tr(lang, 'dollar_reference')}</label>
+                <input value={txnForm.reference} onChange={e => setTxnForm({ ...txnForm, reference: e.target.value })} style={inp} placeholder={tr(lang, 'dollar_reference_placeholder')} />
               </div>
               <div>
-                <label style={lbl}>নোট (ঐচ্ছিক)</label>
-                <input value={txnForm.notes} onChange={e => setTxnForm({ ...txnForm, notes: e.target.value })} style={inp} placeholder="নোট লিখুন…" />
+                <label style={lbl}>{tr(lang, 'dollar_notes_optional')}</label>
+                <input value={txnForm.notes} onChange={e => setTxnForm({ ...txnForm, notes: e.target.value })} style={inp} placeholder={tr(lang, 'dollar_notes_placeholder')} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="submit" disabled={busy === 'create'} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                {busy === 'create' ? 'Adding…' : 'লেনদেন যোগ করুন'}
+                {busy === 'create' ? tr(lang, 'dollar_adding') : tr(lang, 'dollar_add_txn')}
               </button>
-              <button type="button" onClick={() => setTxnForm({ usd_amount: '', reference: '', customer_name: '', notes: '', payment_method: 'bKash' })} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>রিসেট</button>
+              <button type="button" onClick={() => setTxnForm({ usd_amount: '', reference: '', customer_name: '', notes: '', payment_method: 'bKash' })} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'dollar_reset')}</button>
             </div>
           </form>
         </div>
@@ -294,35 +297,35 @@ export function Dollar({ session, role }) {
       {/* History */}
       <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', flexWrap: 'wrap', gap: 10 }}>
-          <b style={{ color: '#fff', fontSize: '1.02rem' }}>লেনদেনের ইতিহাস</b>
-          <button onClick={exportCSV} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>↓ Export</button>
+          <b style={{ color: '#fff', fontSize: '1.02rem' }}>{tr(lang, 'dollar_history')}</b>
+          <button onClick={exportCSV} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'dollar_export')}</button>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 18px 14px', alignItems: 'center' }}>
-          <input placeholder="তারিখ, রেফারেন্স, নোট দিয়ে খুঁজুন…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+          <input placeholder={tr(lang, 'dollar_search_placeholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
             style={{ flex: 1, minWidth: 200, padding: '9px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 9, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
           <select value={typeF} onChange={e => { setTypeF(e.target.value); setPage(1) }} style={selStyle}>
-            <option value="all" style={{ background: '#1a0d0e' }}>সব ধরন</option>
-            <option value="buy" style={{ background: '#1a0d0e' }}>ক্রয়</option>
-            <option value="sell" style={{ background: '#1a0d0e' }}>বিক্রয়</option>
+            <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_all_types')}</option>
+            <option value="buy" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_buy_only')}</option>
+            <option value="sell" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_sell_only')}</option>
           </select>
           <select value={payF} onChange={e => { setPayF(e.target.value); setPage(1) }} style={selStyle}>
-            <option value="all" style={{ background: '#1a0d0e' }}>সব পেমেন্ট মাধ্যম</option>
+            <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_all_payments')}</option>
             {PAY_METHODS.map(m => <option key={m} value={m} style={{ background: '#1a0d0e' }}>{m}</option>)}
           </select>
           <select value={dateF} onChange={e => { setDateF(e.target.value); setPage(1) }} style={selStyle}>
-            <option value="all" style={{ background: '#1a0d0e' }}>তারিখ অনুযায়ী ফিল্টার</option>
-            <option value="today" style={{ background: '#1a0d0e' }}>আজকে</option>
-            <option value="week" style={{ background: '#1a0d0e' }}>গত ৭ দিন</option>
-            <option value="month" style={{ background: '#1a0d0e' }}>গত ৩০ দিন</option>
+            <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_filter_by_date')}</option>
+            <option value="today" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_today')}</option>
+            <option value="week" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_last_7_days')}</option>
+            <option value="month" style={{ background: '#1a0d0e' }}>{tr(lang, 'dollar_last_30_days')}</option>
           </select>
-          <button onClick={clearFilters} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>ফিল্টার</button>
-          <button onClick={load} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>রিসেট</button>
+          <button onClick={clearFilters} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'dollar_filter')}</button>
+          <button onClick={load} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'dollar_reset')}</button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {['#', 'তারিখ ও সময়', 'ধরন', 'USD পরিমাণ', 'রেট (৳)', 'মোট টাকা (৳)', 'পেমেন্ট মাধ্যম', 'রেফারেন্স', 'নোট', 'স্ট্যাটাস', 'অ্যাকশন'].map(h => (
+                {['#', tr(lang, 'dollar_th_datetime'), tr(lang, 'dollar_th_type'), tr(lang, 'dollar_th_usd'), tr(lang, 'dollar_th_rate'), tr(lang, 'dollar_th_total'), tr(lang, 'dollar_th_payment'), tr(lang, 'dollar_th_reference'), tr(lang, 'dollar_th_notes'), tr(lang, 'dollar_th_status'), tr(lang, 'dollar_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -337,9 +340,9 @@ export function Dollar({ session, role }) {
                   </td>
                   <td style={{ padding: '12px 14px' }}>
                     {t.txn_type === 'buy' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>↓ ক্রয়</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>↓ {tr(lang, 'dollar_buy_only')}</span>
                     ) : (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>↑ বিক্রয়</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>↑ {tr(lang, 'dollar_sell_only')}</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.88rem', fontWeight: 600 }}>{Number(t.usd_amount).toFixed(2)}</td>
@@ -350,28 +353,28 @@ export function Dollar({ session, role }) {
                   <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--muted)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{notesOf(t) || '—'}</td>
                   <td style={{ padding: '12px 14px' }}>
                     {t.status === 'completed' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>✓ সম্পন্ন</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>✓ {tr(lang, 'dollar_status_completed')}</span>
                     ) : t.status === 'pending' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>⏳ পেন্ডিং</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>⏳ {tr(lang, 'dollar_status_pending')}</span>
                     ) : t.status === 'cancelled' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(255,255,255,.06)', color: 'var(--muted)', border: '1px solid rgba(255,255,255,.15)' }}>✕ বাতিল</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(255,255,255,.06)', color: 'var(--muted)', border: '1px solid rgba(255,255,255,.15)' }}>✕ {tr(lang, 'dollar_status_cancelled')}</span>
                     ) : (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>↩ রিফান্ড</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>↩ {tr(lang, 'dollar_status_refunded')}</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                    <button title="View" onClick={() => setDetail(t)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', marginRight: 3 }}>👁</button>
+                    <button title={tr(lang, 'dollar_view')} onClick={() => setDetail(t)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', marginRight: 3 }}>👁</button>
                     {t.status === 'pending' && (
                       <>
-                        <button title="Complete" onClick={() => setStatus(t, 'completed')} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(46,204,113,.4)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', marginRight: 3 }}>✓</button>
-                        <button title="Edit" onClick={() => { setEditing(t); setEditForm({ usd_amount: t.usd_amount, reference: t.reference || '', customer_name: t.customer_name || '', notes: notesOf(t), payment_method: payOf(t) === '—' ? 'bKash' : payOf(t) }) }} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', marginRight: 3 }}>✏️</button>
+                        <button title={tr(lang, 'dollar_complete')} onClick={() => setStatus(t, 'completed')} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(46,204,113,.4)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', marginRight: 3 }}>✓</button>
+                        <button title={tr(lang, 'dollar_edit')} onClick={() => { setEditing(t); setEditForm({ usd_amount: t.usd_amount, reference: t.reference || '', customer_name: t.customer_name || '', notes: notesOf(t), payment_method: payOf(t) === '—' ? 'bKash' : payOf(t) }) }} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', marginRight: 3 }}>✏️</button>
                       </>
                     )}
                     {t.status === 'completed' && (
-                      <button title="Refund" onClick={() => setStatus(t, 'refunded')} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', marginRight: 3 }}>↩</button>
+                      <button title={tr(lang, 'dollar_refund')} onClick={() => setStatus(t, 'refunded')} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', marginRight: 3 }}>↩</button>
                     )}
                     {t.status === 'pending' && (
-                      <button title="Delete" onClick={() => del(t)} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>🗑</button>
+                      <button title={tr(lang, 'dollar_delete')} onClick={() => del(t)} disabled={busy === t.id} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>🗑</button>
                     )}
                   </td>
                 </tr>
@@ -381,13 +384,13 @@ export function Dollar({ session, role }) {
         </div>
         {pageItems.length === 0 && !loading && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>কোনো লেনদেন নেই</div>
-            <div style={{ fontSize: '.85rem' }}>এখনো কোনো ডলার লেনদেন হয়নি।</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'dollar_empty_title')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'dollar_empty_desc')}</div>
           </div>
         )}
-        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'dollar_loading')}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, list.length)} of {list.length.toLocaleString()} transactions</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'dollar_showing')} {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'dollar_showing_to')} {Math.min(curPage * pageSize, list.length)} {tr(lang, 'dollar_showing_of')} {list.length.toLocaleString()} {tr(lang, 'dollar_transactions')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -400,7 +403,7 @@ export function Dollar({ session, role }) {
             <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
             <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-              {[5, 10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+              {[5, 10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / {tr(lang, 'dollar_per_page')}</option>)}
             </select>
           </div>
         </div>
@@ -411,17 +414,17 @@ export function Dollar({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowRateModal(false)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 420, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>রেট আপডেট করুন</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'dollar_update_rate')}</h3>
               <button onClick={() => setShowRateModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div><label style={lbl}>ক্রয় রেট (৳ per 1 USD)</label><input type="number" step="0.01" min="0" value={rateForm.buy_rate} onChange={e => setRateForm({ ...rateForm, buy_rate: e.target.value })} style={inp} /></div>
-              <div><label style={lbl}>বিক্রয় রেট (৳ per 1 USD)</label><input type="number" step="0.01" min="0" value={rateForm.sell_rate} onChange={e => setRateForm({ ...rateForm, sell_rate: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_buy_rate_modal')}</label><input type="number" step="0.01" min="0" value={rateForm.buy_rate} onChange={e => setRateForm({ ...rateForm, buy_rate: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_sell_rate_modal')}</label><input type="number" step="0.01" min="0" value={rateForm.sell_rate} onChange={e => setRateForm({ ...rateForm, sell_rate: e.target.value })} style={inp} /></div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={updateRate} disabled={busy === 'rate'} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  {busy === 'rate' ? 'Saving…' : 'Save Rate'}
+                  {busy === 'rate' ? tr(lang, 'dollar_saving') : tr(lang, 'dollar_save_rate')}
                 </button>
-                <button onClick={() => setShowRateModal(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => setShowRateModal(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'dollar_cancel')}</button>
               </div>
             </div>
           </div>
@@ -433,20 +436,20 @@ export function Dollar({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Transaction Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'dollar_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Type: </span><b style={{ color: '#fff' }}>{detail.txn_type === 'buy' ? 'ক্রয় (Buy)' : 'বিক্রয় (Sell)'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>USD: </span><b style={{ color: '#fff' }}>${Number(detail.usd_amount).toFixed(2)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Rate: </span><b style={{ color: '#fff' }}>৳{Number(detail.rate_snapshot).toFixed(2)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>BDT: </span><b style={{ color: '#fff' }}>৳{Number(detail.bdt_amount).toLocaleString('en-IN')}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Payment: </span><b style={{ color: '#fff' }}>{payOf(detail)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Customer: </span><b style={{ color: '#fff' }}>{detail.customer_name || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Reference: </span><b style={{ color: '#fff' }}>{detail.reference || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Notes: </span><span style={{ color: 'var(--silver)' }}>{notesOf(detail) || '—'}</span></div>
-              <div><span style={{ color: 'var(--muted)' }}>Status: </span><b style={{ color: '#fff' }}>{detail.status}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Date: </span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_type')}</span><b style={{ color: '#fff' }}>{detail.txn_type === 'buy' ? tr(lang, 'dollar_detail_buy') : tr(lang, 'dollar_detail_sell')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_usd')}</span><b style={{ color: '#fff' }}>${Number(detail.usd_amount).toFixed(2)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_rate')}</span><b style={{ color: '#fff' }}>৳{Number(detail.rate_snapshot).toFixed(2)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_bdt')}</span><b style={{ color: '#fff' }}>৳{Number(detail.bdt_amount).toLocaleString('en-IN')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_payment')}</span><b style={{ color: '#fff' }}>{payOf(detail)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_customer')}</span><b style={{ color: '#fff' }}>{detail.customer_name || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_reference')}</span><b style={{ color: '#fff' }}>{detail.reference || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_notes')}</span><span style={{ color: 'var(--silver)' }}>{notesOf(detail) || '—'}</span></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_status')}</span><b style={{ color: '#fff' }}>{detail.status}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dollar_detail_date')}</span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
             </div>
           </div>
         </div>
@@ -457,21 +460,21 @@ export function Dollar({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setEditing(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Edit Transaction (Pending)</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'dollar_edit_title')}</h3>
               <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <form onSubmit={saveEdit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div><label style={lbl}>USD Amount</label><input type="number" step="0.01" min="0" value={editForm.usd_amount} onChange={e => setEditForm({ ...editForm, usd_amount: e.target.value })} style={inp} /></div>
-              <div><label style={lbl}>Payment Method</label>
+              <div><label style={lbl}>{tr(lang, 'dollar_edit_usd')}</label><input type="number" step="0.01" min="0" value={editForm.usd_amount} onChange={e => setEditForm({ ...editForm, usd_amount: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_edit_payment')}</label>
                 <select value={editForm.payment_method} onChange={e => setEditForm({ ...editForm, payment_method: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
                   {PAY_METHODS.map(m => <option key={m} value={m} style={{ background: '#1a0d0e' }}>{m}</option>)}
                 </select>
               </div>
-              <div><label style={lbl}>Customer Name</label><input value={editForm.customer_name} onChange={e => setEditForm({ ...editForm, customer_name: e.target.value })} style={inp} /></div>
-              <div><label style={lbl}>Reference</label><input value={editForm.reference} onChange={e => setEditForm({ ...editForm, reference: e.target.value })} style={inp} /></div>
-              <div><label style={lbl}>Notes</label><input value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_edit_customer')}</label><input value={editForm.customer_name} onChange={e => setEditForm({ ...editForm, customer_name: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_edit_reference')}</label><input value={editForm.reference} onChange={e => setEditForm({ ...editForm, reference: e.target.value })} style={inp} /></div>
+              <div><label style={lbl}>{tr(lang, 'dollar_edit_notes')}</label><input value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} style={inp} /></div>
               <button type="submit" disabled={busy === editing.id} style={{ padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                {busy === editing.id ? 'Saving…' : 'Save Changes'}
+                {busy === editing.id ? tr(lang, 'dollar_saving') : tr(lang, 'dollar_save_changes')}
               </button>
             </form>
           </div>

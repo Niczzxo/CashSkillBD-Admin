@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 import { money, dstr, err, isFinance, Tbl, Empty, LoadMore } from './common.jsx'
 
 const PAGE = 20
 
 export function Purchases({ session, role }) {
+  const { lang } = useLang()
   const fin = isFinance(role)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -37,7 +40,7 @@ export function Purchases({ session, role }) {
 
   const save = async (e) => {
     e.preventDefault()
-    if (!form.product_id || !form.qty) return alert('প্রোডাক্ট ও পরিমাণ দিন')
+    if (!form.product_id || !form.qty) return alert(tr(lang, 'purch_err_product_qty'))
     setBusy(true)
     try {
       await manageApi(session, 'purchase.record', {
@@ -57,55 +60,55 @@ export function Purchases({ session, role }) {
 
   return (
     <div>
-      <h3 style={{ margin: '26px 0 14px' }}>📥 ক্রয় রেকর্ড (স্টক ইন)</h3>
+      <h3 style={{ margin: '26px 0 14px' }}>{tr(lang, 'purch_title')}</h3>
       {fin ? (
         <div className="card form-card" style={{ marginBottom: 24 }}>
           <form onSubmit={save}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
               <div>
-                <label>প্রোডাক্ট *</label>
+                <label>{tr(lang, 'purch_product')}</label>
                 <select value={form.product_id} onChange={e => F('product_id', e.target.value)}>
-                  <option value="">— বেছে নিন —</option>
+                  <option value="">{tr(lang, 'purch_select')}</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku}) — {p.currency}</option>)}
                 </select>
               </div>
               <div>
-                <label>সাপ্লায়ার</label>
+                <label>{tr(lang, 'purch_supplier')}</label>
                 <select value={form.supplier_id} onChange={e => F('supplier_id', e.target.value)}>
-                  <option value="">— নেই —</option>
+                  <option value="">{tr(lang, 'purch_none')}</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
               <div>
-                <label>পরিমাণ *</label>
+                <label>{tr(lang, 'purch_qty')}</label>
                 <input type="number" min="1" value={form.qty} onChange={e => F('qty', e.target.value)} />
               </div>
               <div>
-                <label>একক ক্রয়মূল্য</label>
+                <label>{tr(lang, 'purch_unit_cost')}</label>
                 <input type="number" min="0" step="0.01" value={form.unit_cost} onChange={e => F('unit_cost', e.target.value)} />
               </div>
               <div>
-                <label>কারেন্সি</label>
+                <label>{tr(lang, 'purch_currency')}</label>
                 <select value={form.currency} onChange={e => F('currency', e.target.value)}>
                   <option value="BDT">BDT (৳)</option>
                   <option value="USD">USD ($)</option>
                 </select>
               </div>
             </div>
-            <button className="btn" disabled={busy}>{busy ? 'সেভ হচ্ছে…' : 'ক্রয় রেকর্ড করুন'}</button>
+            <button className="btn" disabled={busy}>{busy ? tr(lang, 'purch_saving') : tr(lang, 'purch_record')}</button>
           </form>
-          <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 10 }}>💡 ক্রয় রেকর্ড করলে স্টক অটো বাড়বে (ডাটাবেজ ট্রানজাকশনে)।</p>
+          <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginTop: 10 }}>{tr(lang, 'purch_note')}</p>
         </div>
       ) : (
-        <p style={{ color: 'var(--muted)', marginBottom: 16 }}>🔒 ক্রয় রেকর্ড শুধু ফাইন্যান্স / অ্যাডমিন করতে পারে।</p>
+        <p style={{ color: 'var(--muted)', marginBottom: 16 }}>{tr(lang, 'purch_finance_only')}</p>
       )}
 
-      <h3 style={{ margin: '0 0 14px' }}>🧾 ক্রয় হিস্ট্রি</h3>
-      {loading ? <p style={{ color: 'var(--muted)' }}>লোড হচ্ছে…</p> : (
+      <h3 style={{ margin: '0 0 14px' }}>{tr(lang, 'purch_history')}</h3>
+      {loading ? <p style={{ color: 'var(--muted)' }}>{tr(lang, 'purch_loading')}</p> : (
         <Tbl>
-          <thead><tr><th>তারিখ</th><th>প্রোডাক্ট</th><th>সাপ্লায়ার</th><th>পরিমাণ</th><th>একক মূল্য</th><th>মোট</th></tr></thead>
+          <thead><tr><th>{tr(lang, 'purch_th_date')}</th><th>{tr(lang, 'purch_th_product')}</th><th>{tr(lang, 'purch_th_supplier')}</th><th>{tr(lang, 'purch_th_qty')}</th><th>{tr(lang, 'purch_th_unit')}</th><th>{tr(lang, 'purch_th_total')}</th></tr></thead>
           <tbody>
             {items.map(pu => (
               <tr key={pu.id}>
@@ -120,7 +123,7 @@ export function Purchases({ session, role }) {
           </tbody>
         </Tbl>
       )}
-      {!loading && items.length === 0 && <Empty text="কোনো ক্রয় রেকর্ড নেই।" />}
+      {!loading && items.length === 0 && <Empty text={tr(lang, 'purch_empty')} />}
       <LoadMore hasMore={hasMore} loading={moreLoading} onMore={() => load(false)} />
     </div>
   )

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 import { money, err, isFinance, Tbl, Empty, LoadMore, FinanceOnly } from './common.jsx'
 
 const PAGE = 20
 
 export function Expenses({ session, role }) {
+  const { lang } = useLang()
   const fin = isFinance(role)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +35,7 @@ export function Expenses({ session, role }) {
 
   const save = async (e) => {
     e.preventDefault()
-    if (!form.category.trim() || !Number(form.amount)) return alert('খাত ও পরিমাণ দিন')
+    if (!form.category.trim() || !Number(form.amount)) return alert(tr(lang, 'exp_err_category_amount'))
     setBusy(true)
     try {
       await manageApi(session, 'expense.create', {
@@ -52,21 +55,21 @@ export function Expenses({ session, role }) {
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 14px' }}>💸 খরচ ব্যবস্থাপনা</h3>
+      <h3 style={{ margin: '0 0 14px' }}>{tr(lang, 'exp_title')}</h3>
       <div className="card form-card" style={{ marginBottom: 24 }}>
-        <h3 style={{ marginBottom: 14 }}>➕ নতুন খরচ</h3>
+        <h3 style={{ marginBottom: 14 }}>{tr(lang, 'exp_new')}</h3>
         <form onSubmit={save}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
             <div>
-              <label>খাত *</label>
-              <input value={form.category} onChange={e => F('category', e.target.value)} placeholder="যেমন: বিজ্ঞাপন, সার্ভার" />
+              <label>{tr(lang, 'exp_category')}</label>
+              <input value={form.category} onChange={e => F('category', e.target.value)} placeholder={tr(lang, 'exp_category_placeholder')} />
             </div>
             <div>
-              <label>পরিমাণ *</label>
+              <label>{tr(lang, 'exp_amount')}</label>
               <input type="number" min="0" step="0.01" value={form.amount} onChange={e => F('amount', e.target.value)} />
             </div>
             <div>
-              <label>কারেন্সি</label>
+              <label>{tr(lang, 'exp_currency')}</label>
               <select value={form.currency} onChange={e => F('currency', e.target.value)}>
                 <option value="BDT">BDT (৳)</option>
                 <option value="USD">USD ($)</option>
@@ -75,21 +78,21 @@ export function Expenses({ session, role }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <div>
-              <label>তারিখ</label>
+              <label>{tr(lang, 'exp_date')}</label>
               <input type="date" value={form.expense_date} onChange={e => F('expense_date', e.target.value)} />
             </div>
             <div>
-              <label>নোট</label>
+              <label>{tr(lang, 'exp_notes')}</label>
               <input value={form.notes} onChange={e => F('notes', e.target.value)} />
             </div>
           </div>
-          <button className="btn" disabled={busy}>{busy ? 'সেভ হচ্ছে…' : 'খরচ যোগ করুন'}</button>
+          <button className="btn" disabled={busy}>{busy ? tr(lang, 'exp_saving') : tr(lang, 'exp_add')}</button>
         </form>
       </div>
 
-      {loading ? <p style={{ color: 'var(--muted)' }}>লোড হচ্ছে…</p> : (
+      {loading ? <p style={{ color: 'var(--muted)' }}>{tr(lang, 'exp_loading')}</p> : (
         <Tbl>
-          <thead><tr><th>তারিখ</th><th>খাত</th><th>পরিমাণ</th><th>নোট</th></tr></thead>
+          <thead><tr><th>{tr(lang, 'exp_th_date')}</th><th>{tr(lang, 'exp_th_category')}</th><th>{tr(lang, 'exp_th_amount')}</th><th>{tr(lang, 'exp_th_notes')}</th></tr></thead>
           <tbody>
             {items.map(x => (
               <tr key={x.id}>
@@ -102,7 +105,7 @@ export function Expenses({ session, role }) {
           </tbody>
         </Tbl>
       )}
-      {!loading && items.length === 0 && <Empty text="কোনো খরচ রেকর্ড নেই।" />}
+      {!loading && items.length === 0 && <Empty text={tr(lang, 'exp_empty')} />}
       <LoadMore hasMore={hasMore} loading={moreLoading} onMore={() => load(false)} />
     </div>
   )

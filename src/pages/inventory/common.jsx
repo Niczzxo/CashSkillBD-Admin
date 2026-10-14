@@ -1,5 +1,7 @@
 // Shared helpers for the inventory / product-management admin sections.
 import { fmt } from '../../config.js'
+import { tr } from '../../i18n/translations.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
 
 export const isFinance = (role) => role === 'admin' || role === 'finance'
 
@@ -18,7 +20,7 @@ export const dstr = (s) =>
 export const dstrD = (s) =>
   s ? new Date(s).toLocaleDateString('bn-BD') : '—'
 
-export const err = (e) => alert('❌ ' + (e?.message || e || 'ব্যর্থ'))
+export const err = (e, lang) => alert('❌ ' + (e?.message || e || (lang ? tr(lang, 'cmn_failed') : 'Failed')))
 
 export function Tbl({ children }) {
   return (
@@ -30,23 +32,26 @@ export function Tbl({ children }) {
   )
 }
 
-export function Empty({ text = 'কিছু নেই।' }) {
-  return <p style={{ padding: 20, color: 'var(--muted)' }}>{text}</p>
+export function Empty({ text }) {
+  const { lang } = useLang()
+  return <p style={{ padding: 20, color: 'var(--muted)' }}>{text ?? tr(lang, 'cmn_empty')}</p>
 }
 
 export function LoadMore({ hasMore, loading, onMore }) {
+  const { lang } = useLang()
   if (!hasMore) return null
   return (
     <div style={{ textAlign: 'center', marginTop: 16 }}>
       <button className="btn btn-ghost btn-sm" disabled={loading} onClick={onMore}>
-        {loading ? 'লোড হচ্ছে…' : 'আরো দেখুন'}
+        {loading ? tr(lang, 'cmn_loading') : tr(lang, 'cmn_load_more')}
       </button>
     </div>
   )
 }
 
-export function FinanceOnly({ text = 'এই সেকশন শুধু ফাইন্যান্স / অ্যাডমিনের জন্য।' }) {
-  return <div className="card"><p>🔒 {text}</p></div>
+export function FinanceOnly({ text }) {
+  const { lang } = useLang()
+  return <div className="card"><p>🔒 {text ?? tr(lang, 'cmn_finance_only')}</p></div>
 }
 
 // inline style for filter inputs/selects (outside .form-card)

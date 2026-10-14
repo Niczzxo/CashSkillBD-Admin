@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import { money, err } from './common.jsx'
+import { tr } from '../../i18n/translations.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
 import { IBox, IClock, IMoney, IWarn, IUsers, IChart, IArrowR, IOrders } from '../../components/icons.jsx'
 
 export function Dashboard({ session, goSec }) {
+  const { lang } = useLang()
   const [stats, setStats] = useState(null)
   const [recent, setRecent] = useState([])
   const [lowStock, setLowStock] = useState([])
@@ -72,20 +75,20 @@ export function Dashboard({ session, goSec }) {
     })()
   }, [selMonth])
 
-  if (loading) return <p style={{color:'var(--muted)', padding:20}}>লোড হচ্ছে…</p>
+  if (loading) return <p style={{color:'var(--muted)', padding:20}}>{tr(lang, 'dash_loading')}</p>
 
   const cards = [
-    { label: 'Total Products', sub: 'সক্রিয় প্রোডাক্ট', value: stats.products, icon: <IBox size={22} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)', border: '#ff6b6b' },
-    { label: 'Total Orders', sub: 'পেন্ডিং অর্ডার', value: stats.pendingOrders, icon: <IClock size={22} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)', border: '#f5b942' },
-    { label: 'Total Revenue', sub: 'গত ৩০ দিনের বিক্রয়', value: money(stats.revenue30d), icon: <IMoney size={22} />, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', border: '#2ecc71' },
-    { label: 'Low Stock', sub: 'লো স্টক', value: lowStock.length, icon: <IWarn size={22} />, color: '#e84393', bg: 'rgba(232,67,147,.15)', border: '#e84393' },
+    { label: tr(lang, 'dash_total_products'), sub: tr(lang, 'dash_total_products_sub'), value: stats.products, icon: <IBox size={22} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)', border: '#ff6b6b' },
+    { label: tr(lang, 'dash_total_orders'), sub: tr(lang, 'dash_total_orders_sub'), value: stats.pendingOrders, icon: <IClock size={22} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)', border: '#f5b942' },
+    { label: tr(lang, 'dash_total_revenue'), sub: tr(lang, 'dash_total_revenue_sub'), value: money(stats.revenue30d), icon: <IMoney size={22} />, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', border: '#2ecc71' },
+    { label: tr(lang, 'dash_low_stock'), sub: tr(lang, 'dash_low_stock_sub'), value: lowStock.length, icon: <IWarn size={22} />, color: '#e84393', bg: 'rgba(232,67,147,.15)', border: '#e84393' },
   ]
 
   const quickStats = [
-    { label: 'Total Users', value: quick.users, icon: <IUsers size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
-    { label: 'Active Members', value: quick.members, icon: <IUsers size={20} />, color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
-    { label: 'Total Tickets', value: quick.tickets, icon: <IBox size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
-    { label: 'Pending Approvals', value: quick.approvals, icon: <IClock size={20} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
+    { label: tr(lang, 'dash_total_users'), value: quick.users, icon: <IUsers size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
+    { label: tr(lang, 'dash_active_members'), value: quick.members, icon: <IUsers size={20} />, color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
+    { label: tr(lang, 'dash_total_tickets'), value: quick.tickets, icon: <IBox size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
+    { label: tr(lang, 'dash_pending_approvals'), value: quick.approvals, icon: <IClock size={20} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
   ]
 
   // Line chart SVG
@@ -112,8 +115,8 @@ export function Dashboard({ session, goSec }) {
           <div style={{width:10, height:38, background:'#4da3ff', borderRadius:3}} />
         </div>
         <div>
-          <h2 style={{margin:0, fontSize:'1.5rem', color:'#fff'}}>Dashboard</h2>
-          <p style={{margin:0, color:'var(--muted)', fontSize:'.9rem'}}>Welcome back, Admin! Here's what's happening with your platform.</p>
+          <h2 style={{margin:0, fontSize:'1.5rem', color:'#fff'}}>{tr(lang, 'dash_title')}</h2>
+          <p style={{margin:0, color:'var(--muted)', fontSize:'.9rem'}}>{tr(lang, 'dash_subtitle')}</p>
         </div>
       </div>
 
@@ -137,7 +140,7 @@ export function Dashboard({ session, goSec }) {
         <div className="panel" style={{border:'1px solid rgba(255,91,91,.30)'}}>
           <div style={{display:'flex', flexDirection:'column', gap:12, marginBottom:16}}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
-              <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><IChart size={20} /> Monthly Sales Overview</h3>
+              <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><IChart size={20} /> {tr(lang, 'dash_monthly_sales')}</h3>
               <select
                 value={selMonth}
                 onChange={(e) => setSelMonth(e.target.value)}
@@ -158,8 +161,8 @@ export function Dashboard({ session, goSec }) {
             </div>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
               <div style={{display:'flex', gap:16, fontSize:'.8rem', color:'var(--muted)'}}>
-                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#ff5b5b', marginRight:6}} />Sales</span>
-                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#666', marginRight:6}} />Orders</span>
+                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#ff5b5b', marginRight:6}} />{tr(lang, 'dash_sales')}</span>
+                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#666', marginRight:6}} />{tr(lang, 'dash_orders')}</span>
               </div>
 
             </div>
@@ -191,7 +194,7 @@ export function Dashboard({ session, goSec }) {
 
         <div className="panel" style={{border:'1px solid rgba(255,91,91,.25)'}}>
           <div className="panel-head">
-            <h3 style={{display:'flex', alignItems:'center', gap:8}}><IChart size={20} /> Quick Stats</h3>
+            <h3 style={{display:'flex', alignItems:'center', gap:8}}><IChart size={20} /> {tr(lang, 'dash_quick_stats')}</h3>
           </div>
           <div style={{display:'flex', flexDirection:'column', gap:10}}>
             {quickStats.map((q, i) => (
@@ -211,19 +214,19 @@ export function Dashboard({ session, goSec }) {
       <div className="dash-panels">
         <div className="panel">
           <div className="panel-head">
-            <h3>🕘 Recent Orders</h3>
-            {goSec && <button className="btn btn-sm" onClick={()=>goSec('orders')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'6px 14px', borderRadius:8, cursor:'pointer'}}>View All</button>}
+            <h3>{tr(lang, 'dash_recent_orders')}</h3>
+            {goSec && <button className="btn btn-sm" onClick={()=>goSec('orders')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'6px 14px', borderRadius:8, cursor:'pointer'}}>{tr(lang, 'dash_view_all')}</button>}
           </div>
           {recent.length === 0 ? (
             <div style={{textAlign:'center', padding:'40px 20px', color:'var(--muted)'}}>
               <IOrders size={40} />
-              <p style={{fontWeight:600, color:'#fff'}}>No recent orders found</p>
-              <p style={{fontSize:'.85rem'}}>Orders will appear here once customers make a purchase.</p>
+              <p style={{fontWeight:600, color:'#fff'}}>{tr(lang, 'dash_no_recent_orders')}</p>
+              <p style={{fontSize:'.85rem'}}>{tr(lang, 'dash_no_recent_orders_sub')}</p>
             </div>
           ) : (
             <div style={{overflowX:'auto'}}>
               <table className="panel-table">
-                <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <thead><tr><th>{tr(lang, 'dash_th_order_id')}</th><th>{tr(lang, 'dash_th_customer')}</th><th>{tr(lang, 'dash_th_amount')}</th><th>{tr(lang, 'dash_th_status')}</th><th>{tr(lang, 'dash_th_date')}</th></tr></thead>
                 <tbody>{recent.map(o => (
                   <tr key={o.id}>
                     <td style={{fontFamily:'monospace', fontSize:'.78rem'}}>{String(o.id).slice(0,8)}</td>
@@ -239,23 +242,23 @@ export function Dashboard({ session, goSec }) {
         </div>
         <div className="panel">
           <div className="panel-head">
-            <h3><IWarn size={20} /> Low Stock Products</h3>
-            {goSec && <button className="btn btn-sm" onClick={()=>goSec('products')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'6px 14px', borderRadius:8, cursor:'pointer'}}>View All</button>}
+            <h3><IWarn size={20} /> {tr(lang, 'dash_low_stock_products')}</h3>
+            {goSec && <button className="btn btn-sm" onClick={()=>goSec('products')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'6px 14px', borderRadius:8, cursor:'pointer'}}>{tr(lang, 'dash_view_all')}</button>}
           </div>
           {lowStock.length === 0 ? (
             <div style={{textAlign:'center', padding:'40px 20px', color:'var(--muted)'}}>
-              <p>সব ঠিক আছে ✅</p>
+              <p>{tr(lang, 'dash_all_good')}</p>
             </div>
           ) : (
             <div style={{overflowX:'auto'}}>
               <table className="panel-table">
-                <thead><tr><th>Product</th><th>Stock</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>{tr(lang, 'dash_th_product')}</th><th>{tr(lang, 'dash_th_stock')}</th><th>{tr(lang, 'dash_th_status')}</th><th>{tr(lang, 'dash_th_action')}</th></tr></thead>
                 <tbody>{lowStock.map(p => (
                   <tr key={p.id}>
                     <td>{p.name}</td>
                     <td><b style={{color: p.stock_qty === 0 ? '#ff5b5b' : '#ffb84d'}}>{p.stock_qty}</b></td>
-                    <td><span className="status-badge" style={{background:'rgba(255,91,91,.12)', color:'#ff5b5b'}}>{p.stock_qty === 0 ? 'Out of Stock' : 'Low Stock'}</span></td>
-                    <td>{goSec && <button onClick={()=>goSec('products')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'4px 12px', borderRadius:8, cursor:'pointer', fontSize:'.8rem'}}>Restock</button>}</td>
+                    <td><span className="status-badge" style={{background:'rgba(255,91,91,.12)', color:'#ff5b5b'}}>{p.stock_qty === 0 ? tr(lang, 'dash_out_of_stock') : tr(lang, 'dash_low_stock_badge')}</span></td>
+                    <td>{goSec && <button onClick={()=>goSec('products')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'4px 12px', borderRadius:8, cursor:'pointer', fontSize:'.8rem'}}>{tr(lang, 'dash_restock')}</button>}</td>
                   </tr>
                 ))}</tbody>
               </table>

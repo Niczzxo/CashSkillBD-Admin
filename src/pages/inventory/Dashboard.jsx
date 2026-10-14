@@ -141,9 +141,16 @@ export function Dashboard({ session, goSec }) {
           <div style={{display:'flex', flexDirection:'column', gap:12, marginBottom:16}}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
               <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
-              <span style={{display:'flex', alignItems:'center', gap:6, padding:'6px 12px', background:'rgba(255,255,255,.04)', border:'1px solid var(--border)', borderRadius:8, fontSize:'.85rem', color:'var(--silver)'}}>
-                📅 {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} ▾
-              </span>
+              <select
+                value={range}
+                onChange={(e) => setRange(Number(e.target.value))}
+                style={{padding:'6px 12px', background:'rgba(255,255,255,.04)', border:'1px solid var(--border)', borderRadius:8, fontSize:'.85rem', color:'var(--silver)', cursor:'pointer', outline:'none'}}
+              >
+                <option value={1} style={{background:'#1a0d0e'}}>📅 {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} (১ মাস)</option>
+                <option value={3} style={{background:'#1a0d0e'}}>📅 Last 3 Months</option>
+                <option value={6} style={{background:'#1a0d0e'}}>📅 Last 6 Months</option>
+                <option value={12} style={{background:'#1a0d0e'}}>📅 Last 12 Months</option>
+              </select>
             </div>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
               <div style={{display:'flex', gap:16, fontSize:'.8rem', color:'var(--muted)'}}>

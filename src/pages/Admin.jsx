@@ -35,6 +35,7 @@ import { CourseCustomers } from './inventory/CourseCustomers.jsx'
 import { ServiceCustomers } from './inventory/ServiceCustomers.jsx'
 import { IpServices } from './inventory/IpServices.jsx'
 import { VpsManagement } from './inventory/VpsManagement.jsx'
+import { NumbersManagement } from './inventory/NumbersManagement.jsx'
 import { Services } from './inventory/Services.jsx'
 import { Dollar } from './inventory/Dollar.jsx'
 import { Reports } from './inventory/Reports.jsx'
@@ -136,7 +137,7 @@ export function Admin() {
       case 'service-customers': return <ServiceCustomers />
       case 'ip': return <IpServices session={session} />
       case 'vps': return <VpsManagement session={session} />
-      case 'number': return <Services key="number" session={session} role={role} serviceType="number" />
+      case 'number': return <NumbersManagement session={session} />
       case 'dollar': return <Dollar session={session} role={role} />
       case 'sales-orders': return <SalesOrders session={session} role={role} />
       case 'inventory': return <Inventory session={session} />

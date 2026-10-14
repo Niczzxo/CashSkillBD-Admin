@@ -1174,36 +1174,355 @@ function TeamTab({ session, role }) {
 /* ── Reviews management ── */
 function ReviewsTab() {
   const [reviews, setReviews] = useState([])
-  const load = () => {
-    supabase.from('cashskillbd_reviews').select('*').order('created_at', { ascending: false }).limit(50)
-      .then(({ data }) => setReviews(data || []))
-  }
-  useEffect(load, [])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [typeF, setTypeF] = useState('all')
+  const [ratingF, setRatingF] = useState('all')
+  const [statusF, setStatusF] = useState('all')
+  const [dateF, setDateF] = useState('all')
+  const [page, setPage] = useState(1)
+  const [detail, setDetail] = useState(null)
+  const [reply, setReply] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [editR, setEditR] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
+  const [addForm, setAddForm] = useState({ author: '', text: '', rating: 5 })
+  const [busy, setBusy] = useState(null)
+  const PAGE_SIZE = 10
 
-  const del = async (id) => {
-    if (!confirm('রিভিউটি ডিলিট করবেন?')) return
-    await supabase.from('cashskillbd_reviews').delete().eq('id', id)
-    load()
+  const load = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('cashskillbd_reviews').select('*').order('created_at', { ascending: false }).limit(500)
+    setReviews(data || [])
+    setLoading(false)
   }
+  useEffect(() => { load() }, [])
+
+  // ── Stats ──
+  const total = reviews.length
+  const rated = reviews.filter(r => r.rating != null)
+  const avgRating = rated.length > 0 ? (rated.reduce((s, r) => s + Number(r.rating), 0) / rated.length).toFixed(1) : '—'
+  const approved = reviews.filter(r => !r.status || r.status === 'approved').length
+  const pending = reviews.filter(r => r.status === 'pending').length
+
+  // ── Filters ──
+  let list = reviews
+  if (search.trim()) {
+    const q = search.toLowerCase()
+    list = list.filter(r => (r.author || '').toLowerCase().includes(q) || (r.text || '').toLowerCase().includes(q) || (r.product || '').toLowerCase().includes(q) || (r.course || '').toLowerCase().includes(q))
+  }
+  if (typeF !== 'all') list = list.filter(r => (r.type || 'general') === typeF)
+  if (ratingF !== 'all') list = list.filter(r => Number(r.rating) === Number(ratingF))
+  if (statusF !== 'all') list = list.filter(r => (r.status || 'approved') === statusF)
+  if (dateF !== 'all') {
+    const days = dateF === 'today' ? 1 : dateF === 'week' ? 7 : 30
+    const cutoff = new Date(Date.now() - days * 864e5)
+    list = list.filter(r => new Date(r.created_at) >= cutoff)
+  }
+
+  const clearFilters = () => { setSearch(''); setTypeF('all'); setRatingF('all'); setStatusF('all'); setDateF('all'); setPage(1) }
+
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE))
+  const curPage = Math.min(page, totalPages)
+  const pageItems = list.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE)
+
+  const del = async (r) => {
+    if (!confirm(`"${r.author}"-এর রিভিউটি ডিলিট করবেন?`)) return
+    setBusy(r.id)
+    const { error } = await supabase.from('cashskillbd_reviews').delete().eq('id', r.id)
+    if (error) alert('❌ ' + error.message)
+    else load()
+    setBusy(null)
+  }
+
+  const setStatus = async (r, status) => {
+    setBusy(r.id)
+    const { error } = await supabase.from('cashskillbd_reviews').update({ status }).eq('id', r.id)
+    if (error) alert('❌ Status update failed — status column may not exist in DB. ' + error.message)
+    else load()
+    setBusy(null)
+  }
+
+  const saveEdit = async (e) => {
+    e.preventDefault()
+    setBusy(editR.id)
+    const { error } = await supabase.from('cashskillbd_reviews').update({ text: editText }).eq('id', editR.id)
+    if (error) alert('❌ ' + error.message)
+    else { setEditR(null); load() }
+    setBusy(null)
+  }
+
+  const addReview = async (e) => {
+    e.preventDefault()
+    if (!addForm.author.trim() || !addForm.text.trim()) return alert('Author ও Review text দিন')
+    setBusy('add')
+    const { error } = await supabase.from('cashskillbd_reviews').insert([{ author: addForm.author.trim(), text: addForm.text.trim(), rating: addForm.rating, status: 'pending' }])
+    if (error) alert('❌ ' + error.message)
+    else { setShowAdd(false); setAddForm({ author: '', text: '', rating: 5 }); load() }
+    setBusy(null)
+  }
+
+  const typeBadge = (type) => {
+    const map = {
+      course: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: 'Course' },
+      vps: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: 'VPS' },
+      ip: { bg: 'rgba(77,163,255,.12)', color: '#4da3ff', border: 'rgba(77,163,255,.4)', label: 'IP' },
+      dollar: { bg: 'rgba(46,204,113,.12)', color: '#2ecc71', border: 'rgba(46,204,113,.4)', label: 'Dollar' },
+      number: { bg: 'rgba(245,185,66,.12)', color: '#f5b942', border: 'rgba(245,185,66,.4)', label: 'Number' },
+    }
+    const s = map[(type || 'general').toLowerCase()] || { bg: 'rgba(255,255,255,.06)', color: 'var(--silver)', border: 'rgba(255,255,255,.15)', label: type || 'General' }
+    return <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: 'nowrap' }}>{s.label}</span>
+  }
+
+  const statusBadge = (status) => {
+    const s = status || 'approved'
+    const map = {
+      approved: { bg: 'rgba(46,204,113,.15)', color: '#2ecc71', border: 'rgba(46,204,113,.4)', label: 'Approved' },
+      pending: { bg: 'rgba(245,185,66,.15)', color: '#f5b942', border: 'rgba(245,185,66,.4)', label: 'Pending' },
+      rejected: { bg: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: 'rgba(232,35,42,.4)', label: 'Rejected' },
+    }
+    const b = map[s] || map.approved
+    return <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: b.bg, color: b.color, border: `1px solid ${b.border}`, whiteSpace: 'nowrap' }}>● {b.label}</span>
+  }
+
+  const stars = (rating) => {
+    if (rating == null) return <span style={{ color: 'var(--muted)', fontSize: '.8rem' }}>—</span>
+    return <span style={{ color: '#f5b942', fontSize: '.85rem', letterSpacing: 1, whiteSpace: 'nowrap' }}>{'★'.repeat(Math.round(Number(rating)))}{'☆'.repeat(5 - Math.round(Number(rating)))}</span>
+  }
+
+  const selStyle = {
+    padding: '9px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)',
+    borderRadius: 8, color: '#fff', fontSize: '.82rem', outline: 'none', cursor: 'pointer',
+  }
+  const actionBtn = (bg, border, color) => ({
+    padding: '6px 8px', borderRadius: 7, border: `1px solid ${border}`, background: bg, color, cursor: 'pointer', fontSize: 13, marginRight: 4,
+  })
+  const inp = {
+    width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)',
+    borderRadius: 9, color: '#fff', fontSize: '.9rem', outline: 'none', boxSizing: 'border-box',
+  }
+
+  const stats = [
+    { label: 'Total Reviews', value: total.toLocaleString(), desc: 'All customer reviews', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '💬' },
+    { label: 'Average Rating', value: avgRating, desc: rated.length > 0 ? `From ${rated.length} rated reviews` : 'No ratings yet', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '⭐' },
+    { label: 'Approved Reviews', value: approved.toLocaleString(), desc: 'Visible on website', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '👍' },
+    { label: 'Pending Reviews', value: pending.toLocaleString(), desc: 'Awaiting moderation', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '🕐' },
+  ]
 
   return (
-    <div className="card" style={{padding:0, overflow:'hidden'}}>
-      <div style={{overflowX:'auto'}}>
-        <div className="tbl-wrap"><table className="data-table">
-          <thead><tr><th>লেখক</th><th>রিভিউ</th><th>লিংক</th><th></th></tr></thead>
-          <tbody>
-            {reviews.map(r => (
-              <tr key={r.id}>
-                <td><b>{r.author}</b></td>
-                <td style={{maxWidth:340}}>{r.text || <span style={{color:'var(--muted)'}}>(টেক্সট নেই)</span>}</td>
-                <td>{r.post_url ? <a href={r.post_url} target="_blank" rel="noreferrer" style={{color:'#ff3b40'}}>🔗</a> : '—'}</td>
-                <td><button className="mini-btn no" onClick={() => del(r.id)}><span style={{ fontSize: 14 }}>🗑</span></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
-        {reviews.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>কোনো রিভিউ নেই।</p>}
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>⭐</div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Reviews</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage and moderate all customer reviews. Approve, reply, edit or delete reviews.</p>
+          </div>
+        </div>
+        <button onClick={() => setShowAdd(true)} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+          + Add Review
+        </button>
       </div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ flex: 1, minWidth: 200, background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: `1px solid ${s.color}55`, borderRadius: 14, padding: 18, display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, background: s.bg, display: 'grid', placeItems: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{s.label}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{s.value}</div>
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{s.desc}</div>
+            </div>
+            <span style={{ position: 'absolute', top: 14, right: 14, color: s.color, fontSize: 16 }}>→</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
+        <input placeholder="Search by name, review text, product, or course…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+          style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
+        <select value={typeF} onChange={e => { setTypeF(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Types</option>
+          <option value="course" style={{ background: '#1a0d0e' }}>Course</option>
+          <option value="vps" style={{ background: '#1a0d0e' }}>VPS</option>
+          <option value="ip" style={{ background: '#1a0d0e' }}>IP</option>
+          <option value="dollar" style={{ background: '#1a0d0e' }}>Dollar</option>
+          <option value="number" style={{ background: '#1a0d0e' }}>Number</option>
+        </select>
+        <select value={ratingF} onChange={e => { setRatingF(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Ratings</option>
+          {[5, 4, 3, 2, 1].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} Star{n > 1 ? 's' : ''}</option>)}
+        </select>
+        <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
+          <option value="approved" style={{ background: '#1a0d0e' }}>Approved</option>
+          <option value="pending" style={{ background: '#1a0d0e' }}>Pending</option>
+          <option value="rejected" style={{ background: '#1a0d0e' }}>Rejected</option>
+        </select>
+        <select value={dateF} onChange={e => { setDateF(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Time</option>
+          <option value="today" style={{ background: '#1a0d0e' }}>Today</option>
+          <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
+          <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
+        </select>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.3)', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                {['#', 'User', 'Type', 'Product / Course', 'Rating', 'Review', 'Status', 'Date', 'Helpful', 'Actions'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((r, i) => (
+                <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                  <td style={{ padding: '12px 14px', color: 'var(--muted)', fontSize: '.85rem' }}>{(curPage - 1) * PAGE_SIZE + i + 1}</td>
+                  <td style={{ padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(232,35,42,.2)', display: 'grid', placeItems: 'center', color: '#ff6b6b', fontSize: '.75rem', fontWeight: 700, flexShrink: 0 }}>
+                        {(r.author || '?').slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#fff', fontSize: '.88rem', whiteSpace: 'nowrap' }}>{r.author || '—'}</div>
+                        <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{r.email || ''}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 14px' }}>{typeBadge(r.type)}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: '#fff' }}>{r.product || r.course || (r.post_url ? <a href={r.post_url} target="_blank" rel="noreferrer" style={{ color: '#ff6b6b' }}>View Post ↗</a> : '—')}</td>
+                  <td style={{ padding: '12px 14px' }}>{stars(r.rating)}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: 'var(--silver)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.text || '(No text)'}</td>
+                  <td style={{ padding: '12px 14px' }}>{statusBadge(r.status)}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                    {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}<br />
+                    <span style={{ fontSize: '.72rem' }}>{new Date(r.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: '#fff', textAlign: 'center' }}>{r.helpful_count ?? 0}</td>
+                  <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                    <button title="View" onClick={() => setDetail(r)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
+                    <button title="Reply" onClick={() => { setReply(r); setReplyText('') }} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>↩</button>
+                    <button title="Edit" onClick={() => { setEditR(r); setEditText(r.text || '') }} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
+                    {(r.status === 'pending') && (
+                      <button title="Approve" onClick={() => setStatus(r, 'approved')} disabled={busy === r.id} style={actionBtn('rgba(46,204,113,.1)', 'rgba(46,204,113,.4)', '#2ecc71')}>✓</button>
+                    )}
+                    <button title="Delete" onClick={() => del(r)} disabled={busy === r.id} style={actionBtn('rgba(232,35,42,.1)', 'rgba(232,35,42,.4)', '#ff6b6b')}>🗑</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {pageItems.length === 0 && !loading && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>No reviews found</div>
+            <div style={{ fontSize: '.85rem' }}>No reviews match your filters. Add a new review to get started.</div>
+          </div>
+        )}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1} to {Math.min(curPage * PAGE_SIZE, list.length)} of {list.length.toLocaleString()} reviews</span>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
+            <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - curPage) <= 1).map((p, idx, arr) => (
+              <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {idx > 0 && p - arr[idx - 1] > 1 && <span style={{ color: 'var(--muted)', padding: '0 2px' }}>…</span>}
+                <button onClick={() => setPage(p)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: p === curPage ? '#e8232a' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: p === curPage ? 700 : 400, fontSize: '.85rem' }}>{p}</button>
+              </span>
+            ))}
+            <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
+            <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Detail Modal */}
+      {detail && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 520, width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Review Details</h3>
+              <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(232,35,42,.2)', display: 'grid', placeItems: 'center', color: '#ff6b6b', fontWeight: 700 }}>{(detail.author || '?').slice(0, 2).toUpperCase()}</div>
+              <div><div style={{ fontWeight: 700, color: '#fff' }}>{detail.author}</div><div style={{ color: 'var(--muted)', fontSize: '.8rem' }}>{new Date(detail.created_at).toLocaleString('en-GB')}</div></div>
+              {statusBadge(detail.status)}
+            </div>
+            <div style={{ marginBottom: 10 }}>{stars(detail.rating)}</div>
+            <p style={{ color: 'var(--silver)', fontSize: '.92rem', lineHeight: 1.6, margin: 0 }}>{detail.text || '(No text)'}</p>
+            {detail.post_url && <p style={{ marginTop: 12 }}><a href={detail.post_url} target="_blank" rel="noreferrer" style={{ color: '#ff6b6b', fontSize: '.85rem' }}>View original post ↗</a></p>}
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal */}
+      {reply && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setReply(null)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Reply to {reply.author}</h3>
+              <button onClick={() => setReply(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: '0 0 12px' }}>Reply is saved as a note. Public replies are not supported by the current review system.</p>
+            <textarea value={replyText} onChange={e => setReplyText(e.target.value)} rows={4} placeholder="Write your reply…" style={{ ...inp, resize: 'vertical' }} />
+            <button onClick={() => { alert('Reply noted: ' + replyText.slice(0, 50)); setReply(null) }} style={{ marginTop: 12, padding: '11px', width: '100%', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Send Reply</button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editR && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setEditR(null)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Edit Review</h3>
+              <button onClick={() => setEditR(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <form onSubmit={saveEdit}>
+              <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={5} style={{ ...inp, resize: 'vertical' }} />
+              <button type="submit" disabled={busy === editR.id} style={{ marginTop: 12, padding: '11px', width: '100%', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                {busy === editR.id ? 'Saving…' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Review Modal */}
+      {showAdd && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowAdd(false)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Add Review</h3>
+              <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <form onSubmit={addReview} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input value={addForm.author} onChange={e => setAddForm({ ...addForm, author: e.target.value })} placeholder="Author name" style={inp} />
+              <textarea value={addForm.text} onChange={e => setAddForm({ ...addForm, text: e.target.value })} rows={4} placeholder="Review text…" style={{ ...inp, resize: 'vertical' }} />
+              <select value={addForm.rating} onChange={e => setAddForm({ ...addForm, rating: Number(e.target.value) })} style={{ ...inp, cursor: 'pointer' }}>
+                {[5, 4, 3, 2, 1].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} Star{n > 1 ? 's' : ''}</option>)}
+              </select>
+              <button type="submit" disabled={busy === 'add'} style={{ padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                {busy === 'add' ? 'Adding…' : 'Add Review'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+

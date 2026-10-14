@@ -89,7 +89,7 @@ export function Dashboard({ session, goSec }) {
   ]
 
   // Line chart SVG
-  const chartW = 600, chartH = 200, pad = 35
+  const chartW = 600, chartH = 280, pad = 40
   const maxVal = Math.max(...monthly.map(m => m.total), 1)
   const pts = monthly.map((m, i) => {
     const dayNum = parseInt(m.label) || (i + 1)
@@ -164,7 +164,7 @@ export function Dashboard({ session, goSec }) {
 
             </div>
           </div>
-          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{width:'100%', height:200}}>
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{width:'100%', height:280}}>
             {/* Y-axis grid: 0, 20, 40, 60, 80, 100 */}
             {[0,20,40,60,80,100].map(v => {
               const y = chartH - pad - (v/100) * (chartH - pad*2)

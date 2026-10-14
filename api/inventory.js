@@ -227,6 +227,15 @@ export default async function handler(req, res) {
       return ok(res, { item: r.data[0] })
     }
 
+    if (action === 'product.delete') {
+      if (!finance) return bad(res, 403, 'finance role required')
+      const id = reqInt(b.id, 1)
+      const r = await sbReq(`cashskillbd_products?id=eq.${id}`, 'DELETE')
+      if (!r.ok) return bad(res, 404, 'not found')
+      await audit(me.id, 'product.delete', 'product', id, null, {})
+      return ok(res, { deleted: true })
+    }
+
     if (action === 'product.set_status') {
       if (!finance) return bad(res, 403, 'finance role required')
       const id = reqInt(b.id, 1)

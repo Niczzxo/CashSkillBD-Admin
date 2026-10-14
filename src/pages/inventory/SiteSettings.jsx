@@ -3,15 +3,39 @@ import { supabase } from '../../lib/supabase.js'
 import { err, isFinance } from './common.jsx'
 
 const FIELDS = [
-  { key: 'hero_title', label: 'হিরো টাইটেল', group: '🏠 হোমপেজ' },
-  { key: 'hero_subtitle', label: 'হিরো সাবটাইটেল', group: '🏠 হোমপেজ' },
-  { key: 'course_price', label: 'কোর্স প্রাইস (৳)', group: '🎓 কোর্স', type: 'number' },
-  { key: 'bkash_number', label: 'বিকাশ নাম্বার', group: '💳 পেমেন্ট' },
-  { key: 'nagad_number', label: 'নগদ নাম্বার', group: '💳 পেমেন্ট' },
-  { key: 'rocket_number', label: 'রকেট নাম্বার', group: '💳 পেমেন্ট' },
-  { key: 'seminar_day', label: 'সেমিনার বার', group: '📅 সেমিনার' },
-  { key: 'seminar_time', label: 'সেমিনার সময়', group: '📅 সেমিনার' },
-  { key: 'facebook_url', label: 'ফেসবুক পেজ URL', group: '🔗 সোশ্যাল' },
+  // ── Hero Section ──
+  { key: 'hero_badge', label: 'হিরো ব্যাজ', group: '🦸 হিরো সেকশন' },
+  { key: 'hero_title', label: 'হিরো টাইটেল', group: '🦸 হিরো সেকশন' },
+  { key: 'hero_subtitle', label: 'হিরো সাবটাইটেল', group: '🦸 হিরো সেকশন' },
+  // ── Course Section ──
+  { key: 'course_name', label: 'কোর্সের নাম', group: '🎓 কোর্স সেকশন' },
+  { key: 'course_price', label: 'কোর্স প্রাইস (৳)', group: '🎓 কোর্স সেকশন', type: 'number' },
+  { key: 'course_old_price', label: 'পুরনো প্রাইস (৳)', group: '🎓 কোর্স সেকশন', type: 'number' },
+  { key: 'course_badge', label: 'কোর্স ব্যাজ', group: '🎓 কোর্স সেকশন' },
+  // ── Seminar Section ──
+  { key: 'seminar_title', label: 'সেমিনার টাইটেল', group: '📅 সেমিনার সেকশন' },
+  { key: 'seminar_day', label: 'সেমিনার বার', group: '📅 সেমিনার সেকশন' },
+  { key: 'seminar_time', label: 'সেমিনার সময়', group: '📅 সেমিনার সেকশন' },
+  { key: 'seminar_platform', label: 'প্ল্যাটফর্ম (Zoom)', group: '📅 সেমিনার সেকশন' },
+  // ── Shop Section ──
+  { key: 'shop_title', label: 'শপ টাইটেল', group: '🛒 শপ সেকশন' },
+  { key: 'shop_subtitle', label: 'শপ সাবটাইটেল', group: '🛒 শপ সেকশন' },
+  // ── Reviews Section ──
+  { key: 'reviews_title', label: 'রিভিউ টাইটেল', group: '⭐ রিভিউ সেকশন' },
+  { key: 'reviews_subtitle', label: 'রিভিউ সাবটাইটেল', group: '⭐ রিভিউ সেকশন' },
+  // ── Payment Section ──
+  { key: 'payment_title', label: 'পেমেন্ট টাইটেল', group: '💳 পেমেন্ট সেকশন' },
+  { key: 'bkash_number', label: 'বিকাশ নাম্বার', group: '💳 পেমেন্ট সেকশন' },
+  { key: 'nagad_number', label: 'নগদ নাম্বার', group: '💳 পেমেন্ট সেকশন' },
+  { key: 'rocket_number', label: 'রকেট নাম্বার', group: '💳 পেমেন্ট সেকশন' },
+  { key: 'binance_uid', label: 'বাইনান্স UID', group: '💳 পেমেন্ট সেকশন' },
+  // ── FAQ Section ──
+  { key: 'faq_title', label: 'FAQ টাইটেল', group: '❓ FAQ সেকশন' },
+  // ── Footer Section ──
+  { key: 'footer_about', label: 'ফুটার বর্ণনা', group: '🦶 ফুটার সেকশন' },
+  { key: 'whatsapp_number', label: 'হোয়াটসঅ্যাপ নাম্বার', group: '🦶 ফুটার সেকশন' },
+  { key: 'support_hours', label: 'সাপোর্ট সময়', group: '🦶 ফুটার সেকশন' },
+  { key: 'facebook_url', label: 'ফেসবুক পেজ URL', group: '🦶 ফুটার সেকশন' },
 ]
 
 export function SiteSettings({ session, role }) {

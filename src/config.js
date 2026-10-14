@@ -3,10 +3,10 @@
 
 export const CONFIG = {
   brand: 'CashSkillBD',
-  tagline: 'Learn • Earn • Grow',
+  tagline: 'Learn • Grow • Succeed',
   logoUrl:
     'https://sfkwnvekataedjqrsykn.supabase.co/storage/v1/object/public/cashskillbd/logo.png',
-  fbPageUrl: 'https://www.facebook.com/cashskillbd',
+  fbPageUrl: 'https://www.facebook.com/Cashskill/',
   fbPageName: 'CashSkill BD',
   whatsapp: '01XXXXXXXXX',
 

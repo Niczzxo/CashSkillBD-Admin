@@ -161,7 +161,12 @@ export default async function handler(req, res) {
         low_stock_at: b.low_stock_at !== undefined ? reqInt(b.low_stock_at) : 5,
         image_url: optStr(b.image_url, 1000),
         service_duration_days: b.service_duration_days ? reqInt(b.service_duration_days, 1, 3650) : null,
-        status: 'active',
+        status: oneOf(b.status || 'active', ['active','inactive']),
+        is_popular: b.is_popular === true,
+        sort_order: b.sort_order !== undefined ? reqInt(b.sort_order, 0, 9999) : 0,
+        specs: b.specs && typeof b.specs === 'object' ? b.specs : {},
+        billing_cycle: oneOf(b.billing_cycle || 'monthly', ['hourly','monthly','3months','6months','yearly']),
+        order_button_label: optStr(b.order_button_label, 100),
         created_by: me.id,
       }
       if (!isMoney(row.purchase_cost) || !isMoney(row.selling_price)) throw new Error('invalid money')
@@ -199,6 +204,13 @@ export default async function handler(req, res) {
       if (b.image_url !== undefined) patch.image_url = optStr(b.image_url, 1000)
       if (b.service_duration_days !== undefined)
         patch.service_duration_days = b.service_duration_days ? reqInt(b.service_duration_days, 1, 3650) : null
+      if (b.status !== undefined) patch.status = oneOf(b.status, ['active','inactive'])
+      if (b.is_popular !== undefined) patch.is_popular = b.is_popular === true
+      if (b.sort_order !== undefined) patch.sort_order = reqInt(b.sort_order, 0, 9999)
+      if (b.specs !== undefined && typeof b.specs === 'object') patch.specs = b.specs
+      if (b.billing_cycle !== undefined) patch.billing_cycle = oneOf(b.billing_cycle, ['hourly','monthly','3months','6months','yearly'])
+      if (b.order_button_label !== undefined) patch.order_button_label = optStr(b.order_button_label, 100)
+      if (b.currency !== undefined) patch.currency = oneOf(b.currency, ['BDT','USD'])
       if (Object.keys(patch).length === 0) return bad(res, 400, 'nothing to update')
       const r = await sbReq(`cashskillbd_products?id=eq.${id}`, 'PATCH', patch)
       if (!r.ok) throw new Error('db error')

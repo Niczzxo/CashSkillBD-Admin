@@ -16,6 +16,7 @@ export const t = {
     products: '📦 Products',
     services_ip: '🌐 IP Services',
     services_vps: '🖥️ VPS',
+    vps_plans: '📋 VPS Plans',
     services_number: '📱 Numbers',
     dollar: '💵 Dollar',
     sales_orders: '💰 Sales Orders',
@@ -44,6 +45,7 @@ export const t = {
     products: '📦 প্রোডাক্ট',
     services_ip: '🌐 IP সার্ভিস',
     services_vps: '🖥️ VPS',
+    vps_plans: '📋 VPS Plans',
     services_number: '📱 নাম্বার',
     dollar: '💵 ডলার',
     sales_orders: '💰 সেলস অর্ডার',
@@ -58,4 +60,9 @@ export const t = {
   }
 }
 
-export const tr = (lang, key) => t[lang]?.[key] || t.en[key] || key
+// Accepts full locale codes ('bn-BD', 'en-US', …); admin labels exist in en/bn only,
+// everything else falls back to English (never claim a fuller translation than exists).
+export const tr = (lang, key) => {
+  const l = (lang === 'bn' || lang === 'bn-BD') ? 'bn' : 'en'
+  return t[l]?.[key] || t.en[key] || key
+}

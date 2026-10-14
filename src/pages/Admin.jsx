@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLang } from '../i18n/LanguageContext.jsx'
+import { LanguageSelector } from '../components/LanguageSelector.jsx'
 import { tr } from '../i18n/translations.js'
 import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -21,6 +22,7 @@ async function adminApi(session, action, payload = {}) {
 }
 
 import { Products } from './inventory/Products.jsx'
+import { VpsPlans } from './inventory/VpsPlans.jsx'
 import { Suppliers } from './inventory/Suppliers.jsx'
 import { SalesOrders } from './inventory/SalesOrders.jsx'
 import { Services } from './inventory/Services.jsx'
@@ -55,6 +57,7 @@ const GROUPS = [
       { id: 'products', key: 'products' },
       { id: 'ip', key: 'services_ip' },
       { id: 'vps', key: 'services_vps' },
+      { id: 'vps-plans', key: 'vps_plans' },
       { id: 'number', key: 'services_number' },
       { id: 'dollar', key: 'dollar' },
       { id: 'sales-orders', key: 'sales_orders' },
@@ -78,7 +81,7 @@ const SEC_TITLES = {
 
 export function Admin() {
   const { session, isStaff, role, signOut } = useAuth()
-  const { lang, toggle } = useLang()
+  const { lang } = useLang()
   const [sec, setSec] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -111,6 +114,7 @@ export function Admin() {
       case 'inquiries': return <Inquiries session={session} />
       case 'seminar-regs': return <SeminarRegs session={session} />
       case 'products': return <Products session={session} role={role} />
+      case 'vps-plans': return <VpsPlans session={session} role={role} />
       case 'ip': return <Services key="ip" session={session} role={role} serviceType="ip" />
       case 'vps': return <Services key="vps" session={session} role={role} serviceType="vps" />
       case 'number': return <Services key="number" session={session} role={role} serviceType="number" />
@@ -138,9 +142,7 @@ export function Admin() {
           </div>
           <div className="admin-nav-right">
             <span className="role-badge">{role}</span>
-            <button className="btn btn-sm btn-ghost" onClick={toggle} title={lang === 'en' ? 'বাংলা' : 'English'}>
-              🌐 {lang === 'en' ? 'বাং' : 'EN'}
-            </button>
+            <LanguageSelector />
             <button className="btn btn-sm btn-ghost hide-m" onClick={signOut}>{tr(lang, 'logout')}</button>
             <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={tr(lang, 'menu')}>
               <span /><span /><span />
@@ -163,9 +165,7 @@ export function Admin() {
           ))}
         </div>
         <div className="mnav-foot">
-          <button className="btn btn-block btn-ghost" onClick={() => { toggle(); setMenuOpen(false); }}>
-            🌐 {lang === 'en' ? 'বাংলায় দেখুন' : 'View in English'}
-          </button>
+          <LanguageSelector onSelect={() => setMenuOpen(false)} />
           <div style={{height:8}} />
           <button className="btn btn-block btn-ghost" onClick={signOut}>{tr(lang, 'logout')}</button>
         </div>

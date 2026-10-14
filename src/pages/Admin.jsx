@@ -32,6 +32,7 @@ import { Suppliers } from './inventory/Suppliers.jsx'
 import { SalesOrders } from './inventory/SalesOrders.jsx'
 import { AdminManagement, RolesPermissions, ActivityLogs } from './inventory/AdminManagement.jsx'
 import { CourseCustomers } from './inventory/CourseCustomers.jsx'
+import { ServiceCustomers } from './inventory/ServiceCustomers.jsx'
 import { Services } from './inventory/Services.jsx'
 import { Dollar } from './inventory/Dollar.jsx'
 import { Reports } from './inventory/Reports.jsx'
@@ -63,6 +64,7 @@ const GROUPS = [
       { id: 'vps', key: 'services_vps', icon: <IVps /> },
       { id: 'vps-plans', key: 'vps_plans', icon: <IVps /> },
       { id: 'course-customers', key: 'course_customers', icon: <ILessons /> },
+      { id: 'service-customers', key: 'service_customers', icon: <IProducts /> },
       { id: 'number', key: 'services_number', icon: <IProducts /> },
       { id: 'dollar', key: 'dollar', icon: <IPayments /> },
       { id: 'sales-orders', key: 'sales_orders', icon: <IOrders /> },
@@ -84,7 +86,7 @@ const GROUPS = [
 ]
 
 const SEC_TITLES = {
-  dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members', admins: 'admins', roles: 'roles_permissions', 'activity-logs': 'activity_logs', 'course-customers': 'course_customers',
+  dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members', admins: 'admins', roles: 'roles_permissions', 'activity-logs': 'activity_logs', 'course-customers': 'course_customers', 'service-customers': 'service_customers',
   team: 'team', reviews: 'reviews', tickets: 'tickets', inquiries: 'inquiries', 'seminar-regs': 'seminar_regs', products: 'products_mgmt',
   ip: 'services_ip', vps: 'services_vps', number: 'services_number',
   dollar: 'dollar', 'sales-orders': 'sales_orders',
@@ -129,6 +131,7 @@ export function Admin() {
       case 'products': return <Products session={session} role={role} />
       case 'vps-plans': return <VpsPlans session={session} role={role} />
       case 'course-customers': return <CourseCustomers />
+      case 'service-customers': return <ServiceCustomers />
       case 'ip': return <Services key="ip" session={session} role={role} serviceType="ip" />
       case 'vps': return <Services key="vps" session={session} role={role} serviceType="vps" />
       case 'number': return <Services key="number" session={session} role={role} serviceType="number" />

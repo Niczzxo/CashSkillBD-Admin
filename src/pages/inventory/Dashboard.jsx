@@ -137,14 +137,19 @@ export function Dashboard({ session, goSec }) {
 
       {/* Chart + Quick Stats */}
       <div style={{display:'grid', gridTemplateColumns:'1.6fr 1fr', gap:16, marginBottom:20}} className="dash-mid">
-        <div className="panel" style={{border:'1px solid rgba(255,91,91,.25)'}}>
+        <div className="panel" style={{border:'1px solid rgba(255,91,91,.30)'}}>
           <div className="panel-head">
-            <h3 style={{display:'flex', alignItems:'center', gap:8}}><IChart size={20} /> Monthly Sales Overview</h3>
-            <div className="chart-controls">
-              <button className={`chart-btn ${range===1?'active':''}`} onClick={()=>setRange(1)}>১ মাস</button>
-              <button className={`chart-btn ${range===3?'active':''}`} onClick={()=>setRange(3)}>৩ মাস</button>
-              <button className={`chart-btn ${range===6?'active':''}`} onClick={()=>setRange(6)}>৬ মাস</button>
-              <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
+            <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              <span style={{display:'flex', alignItems:'center', gap:6, padding:'6px 12px', background:'rgba(255,255,255,.04)', border:'1px solid var(--border)', borderRadius:8, fontSize:'.85rem', color:'var(--silver)'}}>
+                📅 {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} ▾
+              </span>
+              <div className="chart-controls">
+                <button className={`chart-btn ${range===1?'active':''}`} onClick={()=>setRange(1)}>১ মাস</button>
+                <button className={`chart-btn ${range===3?'active':''}`} onClick={()=>setRange(3)}>৩ মাস</button>
+                <button className={`chart-btn ${range===6?'active':''}`} onClick={()=>setRange(6)}>৬ মাস</button>
+                <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
+              </div>
             </div>
           </div>
           <div style={{display:'flex', gap:16, marginBottom:8, fontSize:'.8rem', color:'var(--muted)'}}>
@@ -183,12 +188,12 @@ export function Dashboard({ session, goSec }) {
           </div>
           <div style={{display:'flex', flexDirection:'column', gap:10}}>
             {quickStats.map((q, i) => (
-              <div key={i} style={{display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)'}}>
-                <div style={{width:38, height:38, borderRadius:10, background:q.bg, color:q.color, display:'grid', placeItems:'center'}}>{q.icon}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:'.85rem', color:'var(--muted)'}}>{q.label}</div>
+              <div key={i} style={{display:'flex', alignItems:'center', gap:12, padding:'14px', background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)'}}>
+                <div style={{width:40, height:40, borderRadius:10, background:q.bg, color:q.color, display:'grid', placeItems:'center', flexShrink:0}}>{q.icon}</div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontSize:'.85rem', color:'var(--muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{q.label}</div>
                 </div>
-                <div style={{fontSize:'1.2rem', fontWeight:700, color:'#fff'}}>{q.value}</div>
+                <div style={{fontSize:'1.15rem', fontWeight:700, color:'#fff', minWidth:30, textAlign:'right'}}>{q.value}</div>
               </div>
             ))}
           </div>

@@ -33,6 +33,7 @@ export const t = {
     activity_logs: '📋 Activity Logs',
     course_customers: '🎓 Course Customers',
   course_enrollments: 'Course Enrollments',
+  document_verification: 'Document Verification',
     service_customers: '🛍 Service Customers',
     menu: 'Menu',
   },
@@ -69,6 +70,7 @@ export const t = {
     activity_logs: '📋 অ্যাক্টিভিটি লগ',
     course_customers: '🎓 কোর্স কাস্টমারস',
   course_enrollments: 'কোর্স এনরোলমেন্ট',
+  document_verification: 'ডকুমেন্ট যাচাই',
     service_customers: '🛍 সার্ভিস কাস্টমারস',
     menu: 'মেনু',
   }

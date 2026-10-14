@@ -33,6 +33,7 @@ import { SalesOrders } from './inventory/SalesOrders.jsx'
 import { AdminManagement, RolesPermissions } from './inventory/AdminManagement.jsx'
 import { ActivityLogs } from './inventory/ActivityLogs.jsx'
 import { CourseEnrollments } from './inventory/CourseEnrollments.jsx'
+import { DocumentVerification } from './inventory/DocumentVerification.jsx'
 import { CourseCustomers } from './inventory/CourseCustomers.jsx'
 import { ServiceCustomers } from './inventory/ServiceCustomers.jsx'
 import { IpServices } from './inventory/IpServices.jsx'
@@ -70,6 +71,7 @@ const GROUPS = [
       { id: 'vps-plans', key: 'vps_plans', icon: <IVps /> },
       { id: 'course-customers', key: 'course_customers', icon: <ILessons /> },
       { id: 'course-enrollments', key: 'course_enrollments', icon: <ILessons /> },
+      { id: 'document-verification', key: 'document_verification', icon: <ILessons /> },
       { id: 'service-customers', key: 'service_customers', icon: <IProducts /> },
       { id: 'number', key: 'services_number', icon: <IProducts /> },
       { id: 'dollar', key: 'dollar', icon: <IPayments /> },
@@ -138,6 +140,7 @@ export function Admin() {
       case 'vps-plans': return <VpsPlans session={session} role={role} />
       case 'course-customers': return <CourseCustomers />
       case 'course-enrollments': return <CourseEnrollments session={session} />
+      case 'document-verification': return <DocumentVerification session={session} />
       case 'service-customers': return <ServiceCustomers />
       case 'ip': return <IpServices session={session} />
       case 'vps': return <VpsManagement session={session} />

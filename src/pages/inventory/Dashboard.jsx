@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import { money, err } from './common.jsx'
-import { IBox, IClock, IMoney, IWarn, IUsers, IChart, IArrowR } from '../../components/icons.jsx'
+import { IBox, IClock, IMoney, IWarn, IUsers, IChart, IArrowR, IOrders } from '../../components/icons.jsx'
 
 export function Dashboard({ session, goSec }) {
   const [stats, setStats] = useState(null)

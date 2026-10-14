@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { navigate, link } from '../lib/router.js'
 import { fmt } from '../config.js'
+import { ADMIN_LOGO } from '../lib/adminLogo.js'
 
 // Strip leading emoji from translation labels (sidebar uses SVG icons instead)
 const stripEmoji = (s) => String(s || '').replace(/^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}\u{2640}\u{2642}\u{2690}-\u{269B}\u{2700}-\u{27BF}]+\s*/u, '').trim()
@@ -138,7 +139,7 @@ export function Admin() {
       <nav className="admin-nav">
         <div className="wrap admin-nav-inner">
           <div className="admin-brand">
-            <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{width:44, height:44, objectFit:'contain', borderRadius:10}} onError={(e)=>{e.target.style.display='none'}} />
+            <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{width:44, height:44, objectFit:'contain', borderRadius:10}} onError={(e)=>{e.target.style.display='none'}} />
             <div>
               <div className="admin-brand-name">CashSkillBD <span>Admin</span></div>
               <div className="admin-brand-tag">MANAGEMENT PANEL</div>
@@ -157,7 +158,7 @@ export function Admin() {
       <div className={`mnav-overlay ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <aside className={`mnav ${menuOpen ? 'show' : ''}`}>
         <div className="mnav-head">
-          <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{height:40, objectFit:'contain'}} onError={(e)=>{e.target.style.display='none'}} />
+          <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{height:40, objectFit:'contain'}} onError={(e)=>{e.target.style.display='none'}} />
           <button className="mnav-x" onClick={() => setMenuOpen(false)}>✕</button>
         </div>
         <div className="mnav-links">

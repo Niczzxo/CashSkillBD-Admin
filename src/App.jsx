@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
+import { ADMIN_LOGO } from './lib/adminLogo.js'
 import { LangProvider } from './i18n/LanguageContext.jsx'
 import { Admin } from './pages/Admin.jsx'
 
@@ -22,7 +23,7 @@ function LoginForm() {
     <div style={{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <form onSubmit={submit} className="card" style={{width:'100%', maxWidth:400, padding:32}}>
         <div className="center" style={{marginBottom:20}}>
-          <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{width:120, height:120, objectFit:'contain', marginBottom:8}} onError={(e)=>{e.target.style.display='none'}} />
+          <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{width:120, height:120, objectFit:'contain', marginBottom:8}} onError={(e)=>{e.target.style.display='none'}} />
           <h2 style={{marginBottom:6}}>CashSkillBD Admin</h2>
           <p style={{color:'var(--muted)', fontSize:'.92rem'}}>ম্যানেজমেন্ট প্যানেলে লগইন করুন</p>
         </div>

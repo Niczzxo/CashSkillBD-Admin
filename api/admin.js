@@ -54,11 +54,16 @@ export default async function handler(req, res) {
       if (!order) return res.status(404).json({ error: 'order not found' })
       await sbReq(`cashskillbd_orders?id=eq.${order.id}`, 'PATCH', { status: 'confirmed' })
       if (order.user_id && order.course_id) {
-        // upsert enrollment -> active
-        await sbReq('cashskillbd_enrollments?on_conflict=user_id,course_id', 'POST', {
-          user_id: order.user_id, course_id: order.course_id,
-          status: 'active', activated_at: new Date().toISOString(),
-        }, 'resolution=merge-duplicates,return=representation')
+        // Activate course ONLY when identity verification is also approved
+        let identityOk = true
+        const v = await sbGet(`cashskillbd_identity_verifications?order_id=eq.${order.id}&select=status`)
+        if (v.ok && v.data?.length) identityOk = v.data[0].status === 'approved'
+        if (identityOk) {
+          await sbReq('cashskillbd_enrollments?on_conflict=user_id,course_id', 'POST', {
+            user_id: order.user_id, course_id: order.course_id,
+            status: 'active', activated_at: new Date().toISOString(),
+          }, 'resolution=merge-duplicates,return=representation')
+        }
       }
       return res.status(200).json({ ok: true })
     }
@@ -67,6 +72,82 @@ export default async function handler(req, res) {
     if (action === 'reject_order') {
       const { order_id } = req.body
       await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { status: 'rejected' })
+      return res.status(200).json({ ok: true })
+    }
+
+    // ── course enrollments: list orders with identity verification ──
+    if (action === 'enrollment.list') {
+      if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const o = await sbGet(`cashskillbd_orders?course_id=not.is.null&order=created_at.desc&limit=200&select=*`)
+      if (!o.ok) return res.status(500).json({ error: 'db error' })
+      const orders = o.data || []
+      const ids = orders.map(x => x.id).join(',')
+      let verifications = []
+      if (ids) {
+        const v = await sbGet(`cashskillbd_identity_verifications?order_id=in.(${ids})&select=*`)
+        if (v.ok) verifications = v.data || []
+      }
+      const vmap = {}
+      for (const v of verifications) vmap[v.order_id] = v
+      return res.status(200).json({ items: orders.map(o => ({ ...o, identity: vmap[o.id] || null })) })
+    }
+
+    // ── identity: signed URL for private document preview (admin only, 10 min) ──
+    if (action === 'identity.signed_url') {
+      if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const { path } = req.body || {}
+      if (typeof path !== 'string' || !/^identity\/[0-9a-f-]{36}\/[0-9]+-(doc|selfie)\.[a-z0-9]{2,5}$/i.test(path)) return res.status(400).json({ error: 'bad path' })
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/cashskillbd-identity/${path}`, {
+        method: 'POST', headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiresIn: 600 }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || !j.signedURL) return res.status(500).json({ error: 'sign failed' })
+      return res.status(200).json({ url: `${SUPABASE_URL}/storage/v1${j.signedURL}` })
+    }
+
+    // ── identity: approve — only activates course if payment already confirmed ──
+    if (action === 'identity.approve') {
+      if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const { order_id } = req.body || {}
+      const v = await sbGet(`cashskillbd_identity_verifications?order_id=eq.${Number(order_id)}&select=*`)
+      const ver = v.data?.[0]
+      if (!ver) return res.status(404).json({ error: 'verification not found' })
+      if (ver.status !== 'pending') return res.status(409).json({ error: 'already reviewed' })
+      await sbReq(`cashskillbd_identity_verifications?id=eq.${ver.id}`, 'PATCH', { status: 'approved', reviewed_by: me.id, reviewed_at: new Date().toISOString() })
+      await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { identity_status: 'approved' })
+      // Activate course ONLY if payment confirmed
+      const o = await sbGet(`cashskillbd_orders?id=eq.${Number(order_id)}&select=*`)
+      const order = o.data?.[0]
+      if (order && order.status === 'confirmed' && order.user_id && order.course_id) {
+        await sbReq('cashskillbd_enrollments?on_conflict=user_id,course_id', 'POST', {
+          user_id: order.user_id, course_id: order.course_id, status: 'active', activated_at: new Date().toISOString(),
+        }, 'resolution=merge-duplicates,return=representation')
+      }
+      await sbReq('cashskillbd_audit_logs', 'POST', { actor_id: me.id, action: 'identity.approve', entity_type: 'order', entity_id: String(order_id), old_values: { status: 'pending' }, new_values: { status: 'approved' } }, 'return=minimal')
+      return res.status(200).json({ ok: true })
+    }
+
+    // ── identity: reject — never activates course ──
+    if (action === 'identity.reject') {
+      if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const { order_id, reason } = req.body || {}
+      if (!reason || !String(reason).trim()) return res.status(400).json({ error: 'rejection reason required' })
+      const v = await sbGet(`cashskillbd_identity_verifications?order_id=eq.${Number(order_id)}&select=*`)
+      const ver = v.data?.[0]
+      if (!ver) return res.status(404).json({ error: 'verification not found' })
+      if (ver.status !== 'pending') return res.status(409).json({ error: 'already reviewed' })
+      await sbReq(`cashskillbd_identity_verifications?id=eq.${ver.id}`, 'PATCH', { status: 'rejected', reviewed_by: me.id, review_note: String(reason).slice(0, 500), reviewed_at: new Date().toISOString() })
+      await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { identity_status: 'rejected' })
+      await sbReq('cashskillbd_audit_logs', 'POST', { actor_id: me.id, action: 'identity.reject', entity_type: 'order', entity_id: String(order_id), old_values: { status: 'pending' }, new_values: { status: 'rejected', reason: String(reason).slice(0, 500) } }, 'return=minimal')
+      return res.status(200).json({ ok: true })
+    }
+
+    // ── order: admin notes ──
+    if (action === 'order.notes') {
+      if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const { order_id, notes } = req.body || {}
+      await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { admin_notes: String(notes || '').slice(0, 2000) })
       return res.status(200).json({ ok: true })
     }
 

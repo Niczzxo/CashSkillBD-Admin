@@ -623,36 +623,48 @@ function LessonsTab() {
           </div>
         </div>
         <form onSubmit={save}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={lbl}>কোর্স</label>
-              <select value={courseId} onChange={e => setCourseId(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
-                <option value="" style={{ background: '#1a0d0e' }}>সক্রিয় কোর্স নির্বাচন করুন</option>
-                {courses.map(c => <option key={c.id} value={c.id} style={{ background: '#1a0d0e' }}>{c.title}</option>)}
-              </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+            {/* Left column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={lbl}>কোর্স</label>
+                <select value={courseId} onChange={e => setCourseId(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
+                  <option value="" style={{ background: '#1a0d0e' }}>সঠিক কোর্স নির্বাচন করুন</option>
+                  {courses.map(c => <option key={c.id} value={c.id} style={{ background: '#1a0d0e' }}>{c.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>ভিডিও URL * <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(YouTube / Facebook / Vimeo / mp4 লিংক পেস্ট করুন)</span></label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 16 }}>🔗</span>
+                  <input style={{ ...inp, paddingLeft: 36 }} value={form.video_url} onChange={e => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>মিনিট:</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 16 }}>⏱</span>
+                  <input style={{ ...inp, paddingLeft: 36 }} type="number" min="0" value={form.duration_min} onChange={e => setForm({ ...form, duration_min: e.target.value })} placeholder="যেমন: ৩০" />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '.9rem', color: '#fff' }}>
+                  <input type="checkbox" checked={form.is_free_preview} onChange={e => setForm({ ...form, is_free_preview: e.target.checked })} style={{ width: 18, height: 18, accentColor: '#e8232a', cursor: 'pointer' }} />
+                  <span style={{ padding: '2px 8px', borderRadius: 5, background: '#3b82f6', color: '#fff', fontSize: '.7rem', fontWeight: 700 }}>FREE</span>
+                  ফ্রি লেসন (সবার জন্য উন্মুক্ত)
+                </label>
+              </div>
             </div>
-            <div>
-              <label style={lbl}>টাইটেল *</label>
-              <input style={inp} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="যেমন: VPS সেটআপ — পার্ট ১" />
-            </div>
-            <div>
-              <label style={lbl}>ভিডিও URL * <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(YouTube / Facebook / Vimeo / mp4 লিংক পেস্ট করুন)</span></label>
-              <input style={inp} value={form.video_url} onChange={e => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
-            </div>
-            <div>
-              <label style={lbl}>বর্ণনা</label>
-              <textarea style={{ ...inp, height: 42, paddingTop: 10, resize: 'vertical', fontFamily: 'inherit' }} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="লেসনে যা যা শেখানো হবে" />
-            </div>
-            <div>
-              <label style={lbl}>মিনিট:</label>
-              <input style={inp} type="number" min="0" value={form.duration_min} onChange={e => setForm({ ...form, duration_min: e.target.value })} placeholder="যেমন: ৩০" />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 8 }}>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '.9rem', color: '#fff' }}>
-                <input type="checkbox" checked={form.is_free_preview} onChange={e => setForm({ ...form, is_free_preview: e.target.checked })} style={{ width: 18, height: 18, accentColor: '#e8232a', cursor: 'pointer' }} />
-                <span style={{ padding: '2px 8px', borderRadius: 5, background: '#2ecc71', color: '#fff', fontSize: '.7rem', fontWeight: 700 }}>FREE</span>
-                ফ্রি প্রিভিউ (সবার জন্য উন্মুক্ত)
-              </label>
+            {/* Right column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={lbl}>টাইটেল *</label>
+                <input style={inp} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="যেমন: VPS সেটআপ — পার্ট ১" />
+              </div>
+              <div>
+                <label style={lbl}>বর্ণনা</label>
+                <textarea style={{ ...inp, height: 110, paddingTop: 10, resize: 'vertical', fontFamily: 'inherit' }} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="লেসনে যা যা শেখানো হবে" />
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
@@ -668,13 +680,13 @@ function LessonsTab() {
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>📖</div>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center' }}><IOrders size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>লেসন তালিকা</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>সকল লেসন এখানে দেখানো হচ্ছে।</div>
             </div>
           </div>
-          <input placeholder="🔍 লেসন বা কোর্সের নাম দিয়ে খুঁজুন…" value={search} onChange={e => setSearch(e.target.value)}
+          <input placeholder="লেসন বা কোর্সের নাম দিয়ে খুঁজুন…" value={search} onChange={e => setSearch(e.target.value)}
             style={{ padding: '9px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 9, color: '#fff', fontSize: '.85rem', outline: 'none', minWidth: 240 }} />
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -706,8 +718,8 @@ function LessonsTab() {
                     )}
                   </td>
                   <td style={{ padding: '13px 18px', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => edit(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,184,77,.4)', background: 'rgba(255,184,77,.1)', color: '#f5b942', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>✏️</button>
-                    <button onClick={() => del(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>🗑️</button>
+                    <button onClick={() => edit(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,184,77,.4)', background: 'rgba(255,184,77,.1)', color: '#f5b942', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}><span style={{ fontSize: 14 }}>✎</span></button>
+                    <button onClick={() => del(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}><span style={{ fontSize: 14 }}>🗑</span></button>
                   </td>
                 </tr>
               ))}
@@ -855,7 +867,7 @@ function ReviewsTab() {
                 <td><b>{r.author}</b></td>
                 <td style={{maxWidth:340}}>{r.text || <span style={{color:'var(--muted)'}}>(টেক্সট নেই)</span>}</td>
                 <td>{r.post_url ? <a href={r.post_url} target="_blank" rel="noreferrer" style={{color:'#ff3b40'}}>🔗</a> : '—'}</td>
-                <td><button className="mini-btn no" onClick={() => del(r.id)}>🗑️</button></td>
+                <td><button className="mini-btn no" onClick={() => del(r.id)}><span style={{ fontSize: 14 }}>🗑</span></button></td>
               </tr>
             ))}
           </tbody>

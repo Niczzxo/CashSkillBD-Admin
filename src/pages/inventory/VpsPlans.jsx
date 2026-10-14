@@ -1,3 +1,4 @@
+// VPS Plans Management — CashSkillBD Admin
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
 import { money, err, isFinance } from './common.jsx'

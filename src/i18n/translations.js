@@ -32,6 +32,7 @@ export const t = {
     roles_permissions: '🔐 Roles & Permissions',
     activity_logs: '📋 Activity Logs',
     course_customers: '🎓 Course Customers',
+  course_enrollments: 'Course Enrollments',
     service_customers: '🛍 Service Customers',
     menu: 'Menu',
   },
@@ -67,6 +68,7 @@ export const t = {
     roles_permissions: '🔐 রোলস ও পারমিশন',
     activity_logs: '📋 অ্যাক্টিভিটি লগ',
     course_customers: '🎓 কোর্স কাস্টমারস',
+  course_enrollments: 'কোর্স এনরোলমেন্ট',
     service_customers: '🛍 সার্ভিস কাস্টমারস',
     menu: 'মেনু',
   }

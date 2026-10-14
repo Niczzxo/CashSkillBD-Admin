@@ -135,7 +135,7 @@ export function Admin() {
       <nav className="admin-nav">
         <div className="wrap admin-nav-inner">
           <div className="admin-brand">
-            <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{width:44, height:44, objectFit:'contain', borderRadius:10}} />
+            <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{width:44, height:44, objectFit:'contain', borderRadius:10}} onError={(e)=>{e.target.style.display='none'}} />
             <div>
               <div className="admin-brand-name">CashSkillBD <span>Admin</span></div>
               <div className="admin-brand-tag">MANAGEMENT PANEL</div>
@@ -154,7 +154,7 @@ export function Admin() {
       <div className={`mnav-overlay ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <aside className={`mnav ${menuOpen ? 'show' : ''}`}>
         <div className="mnav-head">
-          <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{height:40, objectFit:'contain'}} />
+          <img src="/admin-logo.png" alt="CashSkillBD Admin" style={{height:40, objectFit:'contain'}} onError={(e)=>{e.target.style.display='none'}} />
           <button className="mnav-x" onClick={() => setMenuOpen(false)}>✕</button>
         </div>
         <div className="mnav-links">

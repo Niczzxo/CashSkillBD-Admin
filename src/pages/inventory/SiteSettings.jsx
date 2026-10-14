@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase.js'
 import { err, isFinance } from './common.jsx'
+import { IGear, IBox, IClock, IMoney, IWarn, IChart, IUsers, IOrders, IMembers } from '../../components/icons.jsx'
 
 // ── All settings keys (preserves existing DB schema) ──
 const ALL_KEYS = [
@@ -80,10 +81,10 @@ function ImageField({ label, value, onUpload, onRemove, disabled, recommended })
           <input type="file" accept="image/*" id={`img-${label}`} style={{ display: 'none' }}
             onChange={e => onUpload(e.target.files?.[0])} disabled={disabled} />
           <label htmlFor={`img-${label}`} className="btn btn-sm" style={{ cursor: 'pointer', display: 'inline-block', fontSize: '.78rem', padding: '5px 10px', borderRadius: 7, border: '1px solid var(--red-bright)', color: 'var(--red-bright)', background: 'transparent' }}>
-            ⬆ Change
+            Change
           </label>
           {value && !disabled && (
-            <button className="btn btn-sm btn-ghost" onClick={onRemove} style={{ fontSize: '.78rem' }}>🗑</button>
+            <button className="btn btn-sm btn-ghost" onClick={onRemove} style={{ fontSize: '.78rem' }}>×</button>
           )}
         </div>
       </div>
@@ -165,7 +166,7 @@ export function SiteSettings({ session, role }) {
       {/* Page Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>⚙️</div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><IGear size={24} /></div>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Site Settings</h2>
             <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage your platform information, configuration and preferences.</p>
@@ -177,7 +178,7 @@ export function SiteSettings({ session, role }) {
             background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.9rem',
             boxShadow: '0 4px 16px rgba(232,35,42,.35)', opacity: saving ? 0.6 : 1,
           }}>
-            💾 {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         )}
       </div>
@@ -188,7 +189,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Basic Information ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>ℹ️</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IGear size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Basic Information</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Set your website name, tagline and basic details.</div>
@@ -204,7 +205,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Contact Information ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>📞</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IMembers size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Contact Information</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Configure your contact details.</div>
@@ -220,23 +221,23 @@ export function SiteSettings({ session, role }) {
         {/* ── Social Media Links ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>🔗</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IOrders size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Social Media Links</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Add your social media profiles.</div>
             </div>
           </div>
-          <Field label="📘 Facebook" type="url" value={vals.facebook_url} onChange={v => set('facebook_url', v)} disabled={!fin} placeholder="https://facebook.com/Cashskill" />
-          <Field label="▶️ YouTube" type="url" value={vals.youtube_url} onChange={v => set('youtube_url', v)} disabled={!fin} placeholder="https://youtube.com/@cashskillbd" />
-          <Field label="📷 Instagram" type="url" value={vals.instagram_url} onChange={v => set('instagram_url', v)} disabled={!fin} placeholder="https://instagram.com/cashskillbd" />
-          <Field label="💼 LinkedIn" type="url" value={vals.linkedin_url} onChange={v => set('linkedin_url', v)} disabled={!fin} placeholder="https://linkedin.com/company/cashskillbd" />
-          <Field label="𝕏 Twitter/X" type="url" value={vals.twitter_url} onChange={v => set('twitter_url', v)} disabled={!fin} placeholder="https://twitter.com/cashskillbd" />
+          <Field label="Facebook" type="url" value={vals.facebook_url} onChange={v => set('facebook_url', v)} disabled={!fin} placeholder="https://facebook.com/Cashskill" />
+          <Field label="YouTube" type="url" value={vals.youtube_url} onChange={v => set('youtube_url', v)} disabled={!fin} placeholder="https://youtube.com/@cashskillbd" />
+          <Field label="Instagram" type="url" value={vals.instagram_url} onChange={v => set('instagram_url', v)} disabled={!fin} placeholder="https://instagram.com/cashskillbd" />
+          <Field label="LinkedIn" type="url" value={vals.linkedin_url} onChange={v => set('linkedin_url', v)} disabled={!fin} placeholder="https://linkedin.com/company/cashskillbd" />
+          <Field label="Twitter/X" type="url" value={vals.twitter_url} onChange={v => set('twitter_url', v)} disabled={!fin} placeholder="https://twitter.com/cashskillbd" />
         </div>
 
         {/* ── SEO Settings ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>🔍</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IChart size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>SEO Settings</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Configure your website SEO meta information.</div>
@@ -251,7 +252,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Hero Section ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(255,184,77,.15)')}>🦸</div>
+            <div style={iconBoxStyle('rgba(255,184,77,.15)')}><IBox size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Hero Section</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Homepage hero banner settings.</div>
@@ -265,7 +266,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Course Section ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(77,163,255,.15)')}>🎓</div>
+            <div style={iconBoxStyle('rgba(77,163,255,.15)')}><IUsers size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Course Section</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Survey course configuration.</div>
@@ -282,7 +283,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Seminar Section ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(46,204,113,.15)')}>📅</div>
+            <div style={iconBoxStyle('rgba(46,204,113,.15)')}><IClock size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Seminar Section</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Weekly free seminar settings.</div>
@@ -299,7 +300,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Shop / Reviews / FAQ ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(255,107,214,.15)')}>🛒</div>
+            <div style={iconBoxStyle('rgba(255,107,214,.15)')}><IBox size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Shop, Reviews & FAQ</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Section titles and subtitles.</div>
@@ -315,7 +316,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Payment Settings ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(245,185,66,.15)')}>💳</div>
+            <div style={iconBoxStyle('rgba(245,185,66,.15)')}><IMoney size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Payment Settings</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Payment methods and QR codes.</div>
@@ -335,7 +336,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Footer Settings ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>🦶</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IOrders size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Footer Settings</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Update your footer information.</div>
@@ -351,7 +352,7 @@ export function SiteSettings({ session, role }) {
         {/* ── Additional Settings ── */}
         <div style={cardStyle}>
           <div style={cardHeadStyle}>
-            <div style={iconBoxStyle('rgba(232,35,42,.15)')}>⚙️</div>
+            <div style={iconBoxStyle('rgba(232,35,42,.15)')}><IGear size={20} /></div>
             <div>
               <div style={{ fontWeight: 700, color: '#fff' }}>Additional Settings</div>
               <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Manage other website settings.</div>

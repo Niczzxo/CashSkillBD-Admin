@@ -10,7 +10,7 @@ import { ADMIN_LOGO } from '../lib/adminLogo.js'
 
 // Strip leading emoji from translation labels (sidebar uses SVG icons instead)
 const stripEmoji = (s) => String(s || '').replace(/^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}\u{2640}\u{2642}\u{2690}-\u{269B}\u{2700}-\u{27BF}]+\s*/u, '').trim()
-import { IDash, IGear, IOrders, ILessons, IMembers, ITeam, IReviews, ITickets, IInquiries, ISeminar, IProducts, IVps, IPayments, ISupport, IBox, IClock, IChart } from '../components/icons.jsx'
+import { IDash, IGear, IOrders, ILessons, IMembers, ITeam, IReviews, ITickets, IInquiries, ISeminar, IProducts, IVps, IPayments, ISupport, IBox, IClock, IChart, IMoney, IWarn, IUsers, IArrowR } from '../components/icons.jsx'
 
 async function adminApi(session, action, payload = {}) {
   const r = await fetch('/api/admin', {
@@ -159,7 +159,7 @@ export function Admin() {
       <aside className={`mnav ${menuOpen ? 'show' : ''}`}>
         <div className="mnav-head">
           <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{height:40, objectFit:'contain'}} onError={(e)=>{e.target.style.display='none'}} />
-          <button className="mnav-x" onClick={() => setMenuOpen(false)}>✕</button>
+          <button className="mnav-x" onClick={() => setMenuOpen(false)}>×</button>
         </div>
         <div className="mnav-links">
           {GROUPS.flatMap(g => g.items).map((it, i) => (
@@ -313,21 +313,21 @@ function OrdersTab({ session }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📋</div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><IOrders size={24} /></div>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Orders</h2>
             <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage customer orders, verify payments and track order status.</p>
           </div>
         </div>
         <button onClick={load} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-          🔄 Refresh Orders
+          Refresh Orders
         </button>
       </div>
 
       {/* Summary Cards */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
         <div style={cardStyle('rgba(232,35,42,.4)')}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🛒</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><IOrders size={26} /></div>
           <div>
             <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Total Orders</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{total}</div>
@@ -336,7 +336,7 @@ function OrdersTab({ session }) {
           <span style={{ position: 'absolute', top: 16, right: 16, color: '#e8232a', fontSize: 18 }}>→</span>
         </div>
         <div style={cardStyle('rgba(245,185,66,.4)')}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(245,185,66,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🕐</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(245,185,66,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><IClock size={26} /></div>
           <div>
             <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Pending Orders</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{pending}</div>
@@ -345,7 +345,7 @@ function OrdersTab({ session }) {
           <span style={{ position: 'absolute', top: 16, right: 16, color: '#f5b942', fontSize: 18 }}>→</span>
         </div>
         <div style={cardStyle('rgba(46,204,113,.4)')}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(46,204,113,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>✅</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(46,204,113,.15)', display: 'grid', placeItems: 'center', flexShrink: 0, color: '#2ecc71' }}>✓</div>
           <div>
             <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Confirmed Orders</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{confirmed}</div>
@@ -354,7 +354,7 @@ function OrdersTab({ session }) {
           <span style={{ position: 'absolute', top: 16, right: 16, color: '#2ecc71', fontSize: 18 }}>→</span>
         </div>
         <div style={cardStyle('rgba(0,206,201,.4)')}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,206,201,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🗄️</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,206,201,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><IMoney size={26} /></div>
           <div>
             <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Total Revenue</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{fmt(revenue)}</div>
@@ -378,7 +378,7 @@ function OrdersTab({ session }) {
               color: '#fff', display: 'flex', alignItems: 'center', gap: 8,
               boxShadow: filter === t.id ? '0 4px 16px rgba(232,35,42,.35)' : 'none',
             }}>
-            {t.id === 'pending' ? '⏳' : t.id === 'confirmed' ? '✅' : '📋'} {t.label}
+            {t.label}
             <span style={{ background: filter === t.id ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.1)', padding: '2px 8px', borderRadius: 10, fontSize: '.78rem' }}>{t.count}</span>
           </button>
         ))}
@@ -386,7 +386,7 @@ function OrdersTab({ session }) {
 
       {/* Search & Filters */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
-        <input placeholder="🔍 Search by Order ID, customer name or transaction ID…"
+        <input placeholder="Search by Order ID, customer name or transaction ID…"
           value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 240, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.88rem', outline: 'none' }} />
         <select value={payMethod} onChange={e => { setPayMethod(e.target.value); setPage(1) }} style={selStyle}>
@@ -405,8 +405,8 @@ function OrdersTab({ session }) {
           <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
           <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>🔥 Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>🔄 Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
       </div>
 
       {/* Table */}
@@ -447,7 +447,7 @@ function OrdersTab({ session }) {
                   <td style={{ padding: '14px 16px' }}>{statusBadge(o.status)}</td>
                   <td style={{ padding: '14px 16px' }}>{statusBadge(o.status === 'rejected' ? 'cancelled' : o.status)}</td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => setDetail(o)} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.5)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>👁 View</button>
+                    <button onClick={() => setDetail(o)} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.5)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>View</button>
                     <button onClick={() => setDetail(o)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: '.8rem' }}>⋮</button>
                   </td>
                 </tr>
@@ -457,7 +457,7 @@ function OrdersTab({ session }) {
         </div>
         {pageItems.length === 0 && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>📦</div>
+            <div style={{ marginBottom: 8 }}><IBox size={48} /></div>
             <div style={{ fontSize: '1rem', color: '#fff' }}>No orders found</div>
             <div style={{ fontSize: '.85rem' }}>Orders will appear here once customers make a purchase.</div>
           </div>
@@ -481,7 +481,7 @@ function OrdersTab({ session }) {
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, color: '#fff' }}>Order Details</h3>
-              <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+              <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '.9rem' }}>
               <div><span style={{ color: 'var(--muted)' }}>Order ID: </span><b style={{ color: '#fff' }}>#CSK-{String(detail.id).padStart(5, '0')}</b></div>
@@ -496,10 +496,10 @@ function OrdersTab({ session }) {
             {detail.status === 'pending' && (
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button onClick={() => act(detail.id, 'verify_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#2ecc71', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  {busy === detail.id ? 'Processing…' : '✅ Verify & Approve'}
+                  {busy === detail.id ? 'Processing…' : 'Verify & Approve'}
                 </button>
                 <button onClick={() => act(detail.id, 'reject_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#e8232a', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  ❌ Reject
+                  Reject
                 </button>
               </div>
             )}

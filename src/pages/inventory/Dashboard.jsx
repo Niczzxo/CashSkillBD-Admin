@@ -137,7 +137,7 @@ export function Dashboard({ session, goSec }) {
         <div className="panel" style={{border:'1px solid rgba(255,91,91,.30)'}}>
           <div style={{display:'flex', flexDirection:'column', gap:12, marginBottom:16}}>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
-              <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
+              <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><IChart size={20} /> Monthly Sales Overview</h3>
               <select
                 value={selMonth}
                 onChange={(e) => setSelMonth(e.target.value)}
@@ -216,7 +216,7 @@ export function Dashboard({ session, goSec }) {
           </div>
           {recent.length === 0 ? (
             <div style={{textAlign:'center', padding:'40px 20px', color:'var(--muted)'}}>
-              <div style={{fontSize:'2rem', marginBottom:8, opacity:.4}}>📋</div>
+              <IOrders size={40} />
               <p style={{fontWeight:600, color:'#fff'}}>No recent orders found</p>
               <p style={{fontSize:'.85rem'}}>Orders will appear here once customers make a purchase.</p>
             </div>
@@ -239,7 +239,7 @@ export function Dashboard({ session, goSec }) {
         </div>
         <div className="panel">
           <div className="panel-head">
-            <h3>⚠️ Low Stock Products</h3>
+            <h3><IWarn size={20} /> Low Stock Products</h3>
             {goSec && <button className="btn btn-sm" onClick={()=>goSec('products')} style={{border:'1px solid var(--red-bright)', color:'var(--red-bright)', background:'transparent', padding:'6px 14px', borderRadius:8, cursor:'pointer'}}>View All</button>}
           </div>
           {lowStock.length === 0 ? (

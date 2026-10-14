@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
-const CATEGORY_META = {
-  vps: { label: 'VPS', color: '#c084fc', bg: 'rgba(192,132,252,.15)' },
-  ip: { label: 'IP Service', color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
-  number: { label: 'Number', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)' },
-  course: { label: 'Course', color: '#2ecc71', bg: 'rgba(46,204,113,.15)' },
-  dollar: { label: 'Dollar', color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
-  service: { label: 'Service', color: '#00cec9', bg: 'rgba(0,206,201,.15)' },
-  account: { label: 'Account', color: '#e84393', bg: 'rgba(232,67,147,.15)' },
+const catMeta = (c, lang) => {
+  const CATEGORY_META = {
+    vps: { label: tr(lang, 'ph_cat_vps'), color: '#c084fc', bg: 'rgba(192,132,252,.15)' },
+    ip: { label: tr(lang, 'ph_cat_ip'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
+    number: { label: tr(lang, 'ph_cat_number'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)' },
+    course: { label: tr(lang, 'ph_cat_course'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)' },
+    dollar: { label: tr(lang, 'ph_cat_dollar'), color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
+    service: { label: tr(lang, 'ph_cat_service'), color: '#00cec9', bg: 'rgba(0,206,201,.15)' },
+    account: { label: tr(lang, 'ph_cat_account'), color: '#e84393', bg: 'rgba(232,67,147,.15)' },
+  }
+  return CATEGORY_META[(c || '').toLowerCase()] || { label: c || tr(lang, 'ph_cat_other'), color: '#8e44ad', bg: 'rgba(142,68,173,.15)' }
 }
-const catMeta = (c) => CATEGORY_META[(c || '').toLowerCase()] || { label: c || 'Other', color: '#8e44ad', bg: 'rgba(142,68,173,.15)' }
 
 export function PriceHistory({ session }) {
+  const { lang } = useLang()
   const [items, setItems] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +41,7 @@ export function PriceHistory({ session }) {
       ])
       setItems(h.items || [])
       setProducts(p.items || [])
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -49,7 +54,7 @@ export function PriceHistory({ session }) {
     const change = newPrice - oldPrice
     const changePct = oldPrice !== 0 ? (change / oldPrice) * 100 : (newPrice !== 0 ? 100 : 0)
     return {
-      ...h, prodName: prod.name || `Product #${h.product_id}`, sku: prod.sku || '—',
+      ...h, prodName: prod.name || (tr(lang, 'ph_product_hash') + h.product_id), sku: prod.sku || '—',
       category: prod.category || '—', oldPrice, newPrice, change, changePct,
       currency: h.currency || 'BDT',
     }
@@ -91,10 +96,10 @@ export function PriceHistory({ session }) {
   const initials = (id) => `A${String(id || '').slice(-1)}`
 
   const stats = [
-    { label: 'Total Price Changes', value: totalChanges.toLocaleString(), desc: 'Across all products', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🏷' },
-    { label: 'Products Affected', value: productsAffected.toLocaleString(), desc: 'Products with price updates', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '📦' },
-    { label: 'Average Price Increase', value: `${avgIncrease.toFixed(1)}%`, desc: 'For increased items', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📈' },
-    { label: 'Average Price Decrease', value: `${avgDecrease.toFixed(1)}%`, desc: 'For decreased items', color: '#c084fc', bg: 'rgba(192,132,252,.15)', icon: '📉' },
+    { label: tr(lang, 'ph_stat_total'), value: totalChanges.toLocaleString(), desc: tr(lang, 'ph_stat_total_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🏷' },
+    { label: tr(lang, 'ph_stat_affected'), value: productsAffected.toLocaleString(), desc: tr(lang, 'ph_stat_affected_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '📦' },
+    { label: tr(lang, 'ph_stat_avg_inc'), value: `${avgIncrease.toFixed(1)}%`, desc: tr(lang, 'ph_stat_avg_inc_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📈' },
+    { label: tr(lang, 'ph_stat_avg_dec'), value: `${avgDecrease.toFixed(1)}%`, desc: tr(lang, 'ph_stat_avg_dec_desc'), color: '#c084fc', bg: 'rgba(192,132,252,.15)', icon: '📉' },
   ]
 
   const selStyle = {
@@ -109,21 +114,21 @@ export function PriceHistory({ session }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>🕘</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Price History</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>View and track the price change history of all products and services.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'ph_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'ph_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9, padding: '6px 10px' }}>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
-            <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>to</span>
+            <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>{tr(lang, 'ph_to')}</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
           </div>
           <select value={productF} onChange={e => { setProductF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 150 }}>
-            <option value="all" style={{ background: '#1a0d0e' }}>All Products</option>
+            <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_all_products')}</option>
             {products.map(p => <option key={p.id} value={p.id} style={{ background: '#1a0d0e' }}>{p.name}</option>)}
           </select>
-          <button onClick={load} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>View History</button>
+          <button onClick={load} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>{tr(lang, 'ph_view_history')}</button>
         </div>
       </div>
 
@@ -143,23 +148,23 @@ export function PriceHistory({ session }) {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
-        <input placeholder="Search by product name, SKU or notes…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'ph_search_ph')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={catF} onChange={e => { setCatF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 140 }}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Categories</option>
-          {categories.map(c => <option key={c} value={c} style={{ background: '#1a0d0e' }}>{catMeta(c).label}</option>)}
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_all_categories')}</option>
+          {categories.map(c => <option key={c} value={c} style={{ background: '#1a0d0e' }}>{catMeta(c, lang).label}</option>)}
         </select>
         <select value={changeF} onChange={e => { setChangeF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 140 }}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Change Types</option>
-          <option value="increased" style={{ background: '#1a0d0e' }}>Increased</option>
-          <option value="decreased" style={{ background: '#1a0d0e' }}>Decreased</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_all_change_types')}</option>
+          <option value="increased" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_increased')}</option>
+          <option value="decreased" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_decreased')}</option>
         </select>
         <select value={userF} onChange={e => { setUserF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 130 }}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Users</option>
-          {users.map(u => <option key={u} value={u} style={{ background: '#1a0d0e' }}>Admin {String(u).slice(0, 8)}</option>)}
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_all_users')}</option>
+          {users.map(u => <option key={u} value={u} style={{ background: '#1a0d0e' }}>{tr(lang, 'ph_admin')} {String(u).slice(0, 8)}</option>)}
         </select>
-        <button onClick={load} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.85rem' }}>Filter</button>
-        <button onClick={clearFilters} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Reset</button>
+        <button onClick={load} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.85rem' }}>{tr(lang, 'ph_filter')}</button>
+        <button onClick={clearFilters} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'ph_reset')}</button>
       </div>
 
       {/* Table */}
@@ -168,14 +173,14 @@ export function PriceHistory({ session }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {['#', 'Date & Time', 'Product', 'Category', 'Previous Price', 'New Price', 'Change', 'Change %', 'Changed By', 'Reason / Note', 'Actions'].map(h => (
+                {['#', tr(lang, 'ph_th_date'), tr(lang, 'ph_th_product'), tr(lang, 'ph_th_category'), tr(lang, 'ph_th_prev'), tr(lang, 'ph_th_new'), tr(lang, 'ph_th_change'), tr(lang, 'ph_th_change_pct'), tr(lang, 'ph_th_changed_by'), tr(lang, 'ph_th_reason'), tr(lang, 'ph_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {pageItems.map((h, i) => {
-                const cm = catMeta(h.category)
+                const cm = catMeta(h.category, lang)
                 const up = h.change > 0
                 const down = h.change < 0
                 const curSymbol = h.currency === 'USD' ? '$' : '৳'
@@ -189,7 +194,7 @@ export function PriceHistory({ session }) {
                     <td style={{ padding: '12px 14px' }}>
                       <div>
                         <div style={{ color: '#fff', fontSize: '.88rem', fontWeight: 600 }}>{h.prodName}</div>
-                        <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>SKU: {h.sku}</div>
+                        <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>{tr(lang, 'ph_sku')} {h.sku}</div>
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px' }}><span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: cm.bg, color: cm.color }}>{cm.label}</span></td>
@@ -216,12 +221,12 @@ export function PriceHistory({ session }) {
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColors[String(h.changed_by || '').length % avatarColors.length], display: 'grid', placeItems: 'center', fontSize: '.68rem', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(h.changed_by)}</div>
-                        <span style={{ color: 'var(--silver)', fontSize: '.85rem' }}>Admin {String(h.changed_by || '').slice(0, 8)}</span>
+                        <span style={{ color: 'var(--silver)', fontSize: '.85rem' }}>{tr(lang, 'ph_admin')} {String(h.changed_by || '').slice(0, 8)}</span>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.notes || h.reason || 'Price updated'}</td>
+                    <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--muted)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.notes || h.reason || tr(lang, 'ph_price_updated')}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <button title="View" onClick={() => setDetail(h)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>👁</button>
+                      <button title={tr(lang, 'ph_view')} onClick={() => setDetail(h)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>👁</button>
                     </td>
                   </tr>
                 )
@@ -231,13 +236,13 @@ export function PriceHistory({ session }) {
         </div>
         {pageItems.length === 0 && !loading && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>কোনো price history নেই</div>
-            <div style={{ fontSize: '.85rem' }}>এই ফিল্টারে কোনো দাম পরিবর্তনের রেকর্ড পাওয়া যায়নি। Product price update করলে এখানে history আসবে।</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'ph_empty_title')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'ph_empty_sub')}</div>
           </div>
         )}
-        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'ph_loading')}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, list.length)} of {list.length.toLocaleString()} price history records</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'ph_showing')} {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'ph_showing_to')} {Math.min(curPage * pageSize, list.length)} {tr(lang, 'ph_showing_of')} {list.length.toLocaleString()} {tr(lang, 'ph_showing_records')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -250,7 +255,7 @@ export function PriceHistory({ session }) {
             <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
             <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-              {[10, 25, 50, 100].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+              {[10, 25, 50, 100].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} {tr(lang, 'ph_per_page')}</option>)}
             </select>
           </div>
         </div>
@@ -261,20 +266,20 @@ export function PriceHistory({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 480, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Price Change Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'ph_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Product: </span><b style={{ color: '#fff' }}>{detail.prodName}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>SKU: </span><b style={{ color: '#fff' }}>{detail.sku}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Category: </span><b style={{ color: '#fff' }}>{catMeta(detail.category).label}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Previous Price: </span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{detail.oldPrice.toLocaleString('en-IN')}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>New Price: </span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{detail.newPrice.toLocaleString('en-IN')}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Change: </span><b style={{ color: detail.change > 0 ? '#2ecc71' : detail.change < 0 ? '#ff6b6b' : '#fff' }}>{detail.change > 0 ? '+' : ''}{detail.currency === 'USD' ? '$' : '৳'}{detail.change.toLocaleString('en-IN')} ({detail.changePct.toFixed(1)}%)</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Changed At: </span>{new Date(detail.changed_at).toLocaleString('en-GB')}</div>
-              <div><span style={{ color: 'var(--muted)' }}>Changed By: </span><b style={{ color: '#fff' }}>Admin {String(detail.changed_by || '').slice(0, 8)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Reason / Note: </span><span style={{ color: 'var(--silver)' }}>{detail.notes || detail.reason || 'Price updated'}</span></div>
-              {detail.old_cost != null && <div><span style={{ color: 'var(--muted)' }}>Purchase Cost: </span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{Number(detail.old_cost).toLocaleString('en-IN')} → {detail.currency === 'USD' ? '$' : '৳'}{Number(detail.new_cost || 0).toLocaleString('en-IN')}</b></div>}
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_product')}{' '}</span><b style={{ color: '#fff' }}>{detail.prodName}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_sku')}{' '}</span><b style={{ color: '#fff' }}>{detail.sku}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_category')}{' '}</span><b style={{ color: '#fff' }}>{catMeta(detail.category, lang).label}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_prev')}{' '}</span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{detail.oldPrice.toLocaleString('en-IN')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_new')}{' '}</span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{detail.newPrice.toLocaleString('en-IN')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_change')}{' '}</span><b style={{ color: detail.change > 0 ? '#2ecc71' : detail.change < 0 ? '#ff6b6b' : '#fff' }}>{detail.change > 0 ? '+' : ''}{detail.currency === 'USD' ? '$' : '৳'}{detail.change.toLocaleString('en-IN')} ({detail.changePct.toFixed(1)}%)</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_changed_at')}{' '}</span>{new Date(detail.changed_at).toLocaleString('en-GB')}</div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_changed_by')}{' '}</span><b style={{ color: '#fff' }}>{tr(lang, 'ph_admin')} {String(detail.changed_by || '').slice(0, 8)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_reason')}{' '}</span><span style={{ color: 'var(--silver)' }}>{detail.notes || detail.reason || tr(lang, 'ph_price_updated')}</span></div>
+              {detail.old_cost != null && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'ph_d_cost')}{' '}</span><b style={{ color: '#fff' }}>{detail.currency === 'USD' ? '$' : '৳'}{Number(detail.old_cost).toLocaleString('en-IN')} → {detail.currency === 'USD' ? '$' : '৳'}{Number(detail.new_cost || 0).toLocaleString('en-IN')}</b></div>}
             </div>
           </div>
         </div>

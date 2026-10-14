@@ -577,6 +577,43 @@ export default async function handler(req, res) {
       return ok(res, { items: r.data })
     }
 
+    if (action === 'dollar.txn_update') {
+      if (!finance) return bad(res, 403, 'finance role required')
+      const id = reqInt(b.id, 1)
+      const cur = await sbGet(`cashskillbd_dollar_txns?id=eq.${id}&select=*`)
+      if (!cur.ok || !cur.data?.[0]) return bad(res, 404, 'not found')
+      const old = cur.data[0]
+      if (old.status !== 'pending') return bad(res, 400, 'only pending transactions can be edited')
+      const usd = b.usd_amount != null ? Number(b.usd_amount) : Number(old.usd_amount)
+      if (!isMoney(usd) || usd <= 0) throw new Error('invalid usd_amount')
+      // Recalculate BDT from the ORIGINAL rate snapshot (rate is immutable)
+      const rateC = C4(old.rate_snapshot)
+      const usdC = C2(usd)
+      const bdtC = Math.round((usdC * rateC) / 10000)
+      const patch = {
+        usd_amount: F2(usdC), bdt_amount: F2(bdtC),
+        reference: b.reference != null ? optStr(b.reference, 200) : old.reference,
+        customer_name: b.customer_name != null ? optStr(b.customer_name, 200) : old.customer_name,
+        notes: b.notes != null ? optStr(b.notes, 1000) : old.notes,
+      }
+      const r = await sbReq(`cashskillbd_dollar_txns?id=eq.${id}`, 'PATCH', patch)
+      if (!r.ok) throw new Error('db error')
+      await audit(me.id, 'dollar.txn_update', 'dollar_txn', id, { usd: old.usd_amount, bdt: old.bdt_amount }, { usd: patch.usd_amount, bdt: patch.bdt_amount })
+      return ok(res, { ok: true })
+    }
+
+    if (action === 'dollar.txn_delete') {
+      if (!finance) return bad(res, 403, 'finance role required')
+      const id = reqInt(b.id, 1)
+      const cur = await sbGet(`cashskillbd_dollar_txns?id=eq.${id}&select=status`)
+      if (!cur.ok || !cur.data?.[0]) return bad(res, 404, 'not found')
+      if (cur.data[0].status === 'completed') return bad(res, 400, 'completed transactions cannot be deleted — use refund')
+      const r = await sbReq(`cashskillbd_dollar_txns?id=eq.${id}`, 'DELETE')
+      if (!r.ok) throw new Error('db error')
+      await audit(me.id, 'dollar.txn_delete', 'dollar_txn', id, { status: cur.data[0].status }, {})
+      return ok(res, { deleted: true })
+    }
+
     if (action === 'dollar.txn_set_status') {
       if (!finance) return bad(res, 403, 'finance role required')
       const id = reqInt(b.id, 1)

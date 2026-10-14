@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
-const SERVICE_TYPES = [
-  { id: 'vps', label: 'VPS', color: '#c084fc', bg: 'rgba(192,132,252,.12)', border: 'rgba(192,132,252,.4)' },
-  { id: 'ip', label: 'IP', color: '#4da3ff', bg: 'rgba(77,163,255,.12)', border: 'rgba(77,163,255,.4)' },
-  { id: 'dollar', label: 'Dollar', color: '#2ecc71', bg: 'rgba(46,204,113,.12)', border: 'rgba(46,204,113,.4)' },
-  { id: 'number', label: 'Number', color: '#f5b942', bg: 'rgba(245,185,66,.12)', border: 'rgba(245,185,66,.4)' },
-]
 
 const serviceTypeOf = (itemName) => {
   const n = (itemName || '').toLowerCase()
@@ -18,6 +14,13 @@ const serviceTypeOf = (itemName) => {
 }
 
 export function ServiceCustomers() {
+  const { lang } = useLang()
+  const SERVICE_TYPES = [
+    { id: 'vps', label: tr(lang, 'sc_type_vps'), color: '#c084fc', bg: 'rgba(192,132,252,.12)', border: 'rgba(192,132,252,.4)' },
+    { id: 'ip', label: tr(lang, 'sc_type_ip'), color: '#4da3ff', bg: 'rgba(77,163,255,.12)', border: 'rgba(77,163,255,.4)' },
+    { id: 'dollar', label: tr(lang, 'sc_type_dollar'), color: '#2ecc71', bg: 'rgba(46,204,113,.12)', border: 'rgba(46,204,113,.4)' },
+    { id: 'number', label: tr(lang, 'sc_type_number'), color: '#f5b942', bg: 'rgba(245,185,66,.12)', border: 'rgba(245,185,66,.4)' },
+  ]
   const [members, setMembers] = useState([])
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -116,10 +119,10 @@ export function ServiceCustomers() {
   })
 
   const stats = [
-    { label: 'Total Service Customers', value: totalCustomers.toLocaleString(), desc: 'Unique members who purchased services', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '👥' },
-    { label: 'Total Service Purchases', value: totalPurchases.toLocaleString(), desc: 'Total completed service orders', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🛍' },
-    { label: 'Total Revenue', value: fmt(totalRevenue), desc: 'From completed service orders', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '💰' },
-    { label: 'Avg. Spending', value: fmt(avgSpending), desc: 'Per customer', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📊' },
+    { label: tr(lang, 'sc_total_customers'), value: totalCustomers.toLocaleString(), desc: tr(lang, 'sc_total_customers_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '👥' },
+    { label: tr(lang, 'sc_total_purchases'), value: totalPurchases.toLocaleString(), desc: tr(lang, 'sc_total_purchases_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🛍' },
+    { label: tr(lang, 'sc_total_revenue'), value: fmt(totalRevenue), desc: tr(lang, 'sc_total_revenue_desc'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '💰' },
+    { label: tr(lang, 'sc_avg_spending'), value: fmt(avgSpending), desc: tr(lang, 'sc_avg_spending_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📊' },
   ]
 
   return (
@@ -129,21 +132,21 @@ export function ServiceCustomers() {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>🛍</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Service Customers</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>View and manage members who have purchased VPS, IP, Dollar, or Number services.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'sc_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'sc_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
           <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>
-            ↓ Export ▾
+            ↓ {tr(lang, 'sc_export')} ▾
           </button>
           {exportOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 150, marginTop: 6, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 10, minWidth: 150 }}>
-              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Export as CSV</button>
+              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'sc_export_csv')}</button>
             </div>
           )}
-          <button onClick={() => alert('Services are managed via Products / VPS Plans / IP / Dollar / Number pages.')} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-            View All Services
+          <button onClick={() => alert(tr(lang, 'sc_alert_services_managed'))} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+            {tr(lang, 'sc_view_all_services')}
           </button>
         </div>
       </div>
@@ -165,29 +168,29 @@ export function ServiceCustomers() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
-        <input placeholder="Search by name, email, member ID or phone…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'sc_search_placeholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={serviceF} onChange={e => { setServiceF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Services</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_all_services')}</option>
           {SERVICE_TYPES.map(t => <option key={t.id} value={t.id} style={{ background: '#1a0d0e' }}>{t.label}</option>)}
         </select>
         <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
-          <option value="active" style={{ background: '#1a0d0e' }}>Active</option>
-          <option value="suspended" style={{ background: '#1a0d0e' }}>Suspended</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_all_statuses')}</option>
+          <option value="active" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_active')}</option>
+          <option value="suspended" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_suspended')}</option>
         </select>
         <select value={countryF} onChange={e => setCountryF(e.target.value)} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Countries</option>
-          <option value="bd" style={{ background: '#1a0d0e' }}>Bangladesh</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_all_countries')}</option>
+          <option value="bd" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_bangladesh')}</option>
         </select>
         <select value={dateF} onChange={e => { setDateF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Time</option>
-          <option value="today" style={{ background: '#1a0d0e' }}>Today</option>
-          <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
-          <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_all_time')}</option>
+          <option value="today" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_today')}</option>
+          <option value="week" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_last_7_days')}</option>
+          <option value="month" style={{ background: '#1a0d0e' }}>{tr(lang, 'sc_last_30_days')}</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'sc_clear_filters')}</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'sc_refresh')}</button>
       </div>
 
       {/* Table */}
@@ -196,7 +199,7 @@ export function ServiceCustomers() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {['#', 'Profile', 'Member ID', 'Name', 'Email', 'Phone', 'Services Purchased', 'Last Service', 'Total Spent', 'Status', 'Joined Date', 'Actions'].map(h => (
+                {[tr(lang, 'sc_th_hash'), tr(lang, 'sc_th_profile'), tr(lang, 'sc_th_member_id'), tr(lang, 'sc_th_name'), tr(lang, 'sc_th_email'), tr(lang, 'sc_th_phone'), tr(lang, 'sc_th_services_purchased'), tr(lang, 'sc_th_last_service'), tr(lang, 'sc_th_total_spent'), tr(lang, 'sc_th_status'), tr(lang, 'sc_th_joined_date'), tr(lang, 'sc_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -227,7 +230,7 @@ export function ServiceCustomers() {
                       ))}
                       {c._types.other > 0 && (
                         <span style={{ padding: '3px 9px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(255,255,255,.06)', color: 'var(--silver)', border: '1px solid rgba(255,255,255,.15)', whiteSpace: 'nowrap' }}>
-                          Other ({c._types.other})
+                          {tr(lang, 'sc_other')} ({c._types.other})
                         </span>
                       )}
                     </div>
@@ -239,9 +242,9 @@ export function ServiceCustomers() {
                   <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.88rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(c._spent)}</td>
                   <td style={{ padding: '12px 14px' }}>
                     {c.is_active === false ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● Suspended</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● {tr(lang, 'sc_suspended')}</span>
                     ) : (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● Active</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● {tr(lang, 'sc_active')}</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 14px', fontSize: '.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
@@ -249,9 +252,9 @@ export function ServiceCustomers() {
                     <span style={{ fontSize: '.72rem' }}>{new Date(c.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                    <button title="View Details" onClick={() => setDetail(c)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
-                    <button title="Service History" onClick={() => setDetail(c)} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>🧾</button>
-                    <button title="Edit" onClick={() => alert('Edit via Members page.')} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
+                    <button title={tr(lang, 'sc_view_details')} onClick={() => setDetail(c)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
+                    <button title={tr(lang, 'sc_service_history')} onClick={() => setDetail(c)} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>🧾</button>
+                    <button title={tr(lang, 'sc_edit')} onClick={() => alert(tr(lang, 'sc_edit_via_members'))} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
                   </td>
                 </tr>
               ))}
@@ -260,13 +263,13 @@ export function ServiceCustomers() {
         </div>
         {pageItems.length === 0 && !loading && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>No service customers found</div>
-            <div style={{ fontSize: '.85rem' }}>No members have purchased a service yet, or none match your filters.</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'sc_no_customers')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'sc_no_customers_desc')}</div>
           </div>
         )}
-        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'sc_loading')}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1} to {Math.min(curPage * PAGE_SIZE, list.length)} of {list.length.toLocaleString()} service customers</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'sc_showing')} {list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1} {tr(lang, 'sc_to')} {Math.min(curPage * PAGE_SIZE, list.length)} {tr(lang, 'sc_of')} {list.length.toLocaleString()} {tr(lang, 'sc_service_customers')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -287,17 +290,17 @@ export function ServiceCustomers() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Customer Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'sc_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Name: </span><b style={{ color: '#fff' }}>{detail.full_name || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Email: </span><b style={{ color: '#fff' }}>{detail.email}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Member ID: </span><b style={{ color: '#fff' }}>{detail.member_id || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Services: </span><b style={{ color: '#fff' }}>{detail._count}</b> &nbsp; <span style={{ color: 'var(--muted)' }}>Total Spent: </span><b style={{ color: '#fff' }}>{fmt(detail._spent)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'sc_name_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.full_name || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'sc_email_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.email}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'sc_member_id_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.member_id || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'sc_services_label')}{' '}</span><b style={{ color: '#fff' }}>{detail._count}</b> &nbsp; <span style={{ color: 'var(--muted)' }}>{tr(lang, 'sc_total_spent_label')}{' '}</span><b style={{ color: '#fff' }}>{fmt(detail._spent)}</b></div>
             </div>
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontWeight: 600, color: '#fff', marginBottom: 8 }}>Purchased Services</div>
+              <div style={{ fontWeight: 600, color: '#fff', marginBottom: 8 }}>{tr(lang, 'sc_purchased_services')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {detail._serviceOrders.map(o => (
                   <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,.03)', borderRadius: 8, fontSize: '.85rem' }}>

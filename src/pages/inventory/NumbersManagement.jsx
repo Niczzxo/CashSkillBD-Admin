@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
 const COUNTRY_CODES = {
   usa: 'us', us: 'us', uk: 'gb', 'united kingdom': 'gb', germany: 'de',
@@ -8,7 +10,7 @@ const COUNTRY_CODES = {
   india: 'in', brazil: 'br', poland: 'pl', sweden: 'se', norway: 'no',
   'south korea': 'kr', korea: 'kr', china: 'cn', russia: 'ru', turkey: 'tr',
 }
-const SERVICE_TYPES = ['SMS Verification', 'Voice Calls', 'Toll-Free', 'Local', 'Mobile', 'Landline']
+const serviceTypes = (lang) => [tr(lang, 'num_service_sms'), tr(lang, 'num_service_voice'), tr(lang, 'num_service_tollfree'), tr(lang, 'num_service_local'), tr(lang, 'num_service_mobile'), tr(lang, 'num_service_landline')]
 
 const flagUrl = (country) => {
   const code = COUNTRY_CODES[(country || '').toLowerCase().trim()]
@@ -17,9 +19,10 @@ const flagUrl = (country) => {
 function specsOf(p) {
   try { return typeof p.specs === 'string' ? JSON.parse(p.specs) : (p.specs || {}) } catch { return {} }
 }
-const countryOf = (p) => specsOf(p).country || p.name || 'Unknown'
+const countryOf = (p, lang) => specsOf(p).country || p.name || tr(lang, 'num_unknown')
 
 export function NumbersManagement({ session }) {
+  const { lang } = useLang()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -40,7 +43,7 @@ export function NumbersManagement({ session }) {
       const j = await manageApi(session, 'product.list', { limit: 500, offset: 0 })
       const all = j.items || []
       setProducts(all.filter(p => (p.product_type || '').toLowerCase() === 'number' || (p.category || '').toLowerCase() === 'number'))
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -48,13 +51,13 @@ export function NumbersManagement({ session }) {
   // ── Group products by country ──
   const countries = {}
   products.forEach(p => {
-    const c = countryOf(p)
+    const c = countryOf(p, lang)
     if (!countries[c]) countries[c] = { name: c, products: [], types: new Set(), minPrice: Infinity, prevPrice: null, active: false, notes: '' }
     const g = countries[c]
     g.products.push(p)
     const s = specsOf(p)
     if (Array.isArray(s.number_types)) s.number_types.forEach(t => g.types.add(t))
-    else g.types.add(s.service_type || 'SMS Verification')
+    else g.types.add(s.service_type || tr(lang, 'num_service_sms'))
     const price = Number(p.selling_price || 0)
     if (price > 0 && price < g.minPrice) g.minPrice = price
     if (s.previous_price) g.prevPrice = Number(s.previous_price)
@@ -107,10 +110,10 @@ export function NumbersManagement({ session }) {
 
   const save = async (e) => {
     e.preventDefault()
-    if (!form.country.trim()) return alert('Country name দিন')
-    if (!form.starting_price) return alert('Starting price দিন')
+    if (!form.country.trim()) return alert(tr(lang, 'num_country_name_required'))
+    if (!form.starting_price) return alert(tr(lang, 'num_starting_price_required'))
     // Duplicate check (create mode)
-    if (!editing && countries[form.country.trim()]) return alert('এই country already আছে। Edit করুন।')
+    if (!editing && countries[form.country.trim()]) return alert(tr(lang, 'num_country_exists'))
     setBusy('save')
     try {
       const specs = {
@@ -132,20 +135,20 @@ export function NumbersManagement({ session }) {
       }
       setShowForm(false); setEditing(null)
       load()
-      alert('✅ Country saved')
-    } catch (ex) { alert('❌ ' + ex.message) }
+      alert(tr(lang, 'num_country_saved'))
+    } catch (ex) { alert(ex.message) }
     setBusy(null)
   }
 
   const del = async (c) => {
-    if (!confirm(`"${c.name}" country delete করবেন?\\n\\nএই country's সব number products delete হবে।`)) return
+    if (!confirm(`"${c.name}" ` + tr(lang, 'num_delete_confirm'))) return
     setBusy(c.name)
     try {
       for (const p of c.products) {
         await manageApi(session, 'product.delete', { id: p.id })
       }
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
@@ -156,13 +159,13 @@ export function NumbersManagement({ session }) {
         await manageApi(session, 'product.set_status', { id: p.id, status: c.active ? 'inactive' : 'active' })
       }
       load()
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setBusy(null)
   }
 
   const exportCSV = () => {
-    const header = 'Country,Number Types,Starting Price,Status\n'
-    const rows = list.map(c => `"${c.name}",${c.typeCount},${c.startPrice ?? ''},${c.active ? 'Active' : 'Inactive'}`).join('\n')
+    const header = tr(lang, 'num_csv_country') + ',' + tr(lang, 'num_number_types') + ',' + tr(lang, 'num_starting_price') + ',' + tr(lang, 'num_status') + '\n'
+    const rows = list.map(c => `"${c.name}",${c.typeCount},${c.startPrice ?? ''},${c.active ? tr(lang, 'num_active') : tr(lang, 'num_inactive')}`).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -183,10 +186,10 @@ export function NumbersManagement({ session }) {
   const lbl = { display: 'block', fontSize: '.82rem', color: 'var(--silver)', marginBottom: 5, fontWeight: 500 }
 
   const stats = [
-    { label: 'Total Countries', value: totalCountries.toLocaleString(), desc: 'Countries available', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🌐' },
-    { label: 'Active Countries', value: activeCountries.toLocaleString(), desc: 'Currently active', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🗄' },
-    { label: 'Total Number Types', value: totalTypes.toLocaleString(), desc: 'Available number types', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
-    { label: 'Available for Purchase', value: available.toLocaleString(), desc: 'Customers can buy', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '👥' },
+    { label: tr(lang, 'num_total_countries'), value: totalCountries.toLocaleString(), desc: tr(lang, 'num_total_countries_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🌐' },
+    { label: tr(lang, 'num_active_countries'), value: activeCountries.toLocaleString(), desc: tr(lang, 'num_active_countries_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🗄' },
+    { label: tr(lang, 'num_total_types'), value: totalTypes.toLocaleString(), desc: tr(lang, 'num_total_types_desc'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
+    { label: tr(lang, 'num_available_purchase'), value: available.toLocaleString(), desc: tr(lang, 'num_available_purchase_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '👥' },
   ]
 
   return (
@@ -196,18 +199,18 @@ export function NumbersManagement({ session }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📞</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Numbers Management</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage available countries for virtual phone numbers. Customers can purchase numbers from these countries.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'num_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'num_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
-          <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>↓ Export ▾</button>
+          <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>↓ {tr(lang, 'num_export')} ▾</button>
           {exportOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 140, marginTop: 6, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 10, minWidth: 150 }}>
-              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Export as CSV</button>
+              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'num_export_csv')}</button>
             </div>
           )}
-          <button onClick={openCreate} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>+ Add Country</button>
+          <button onClick={openCreate} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>+ {tr(lang, 'num_add_country')}</button>
         </div>
       </div>
 
@@ -228,25 +231,25 @@ export function NumbersManagement({ session }) {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
-        <input placeholder="Search country by name…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'num_search_placeholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={{ padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', cursor: 'pointer', minWidth: 160 }}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
-          <option value="active" style={{ background: '#1a0d0e' }}>Active</option>
-          <option value="inactive" style={{ background: '#1a0d0e' }}>Inactive</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'num_all_statuses')}</option>
+          <option value="active" style={{ background: '#1a0d0e' }}>{tr(lang, 'num_active')}</option>
+          <option value="inactive" style={{ background: '#1a0d0e' }}>{tr(lang, 'num_inactive')}</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'num_clear_filters')}</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'num_refresh')}</button>
       </div>
 
       {/* Country Cards */}
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'num_loading')}</div>
       ) : pageItems.length === 0 ? (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--muted)', background: 'rgba(255,255,255,.02)', borderRadius: 14, border: '1px solid rgba(255,255,255,.06)' }}>
-          <div style={{ fontSize: '1.05rem', color: '#fff', marginBottom: 6 }}>No countries configured</div>
-          <div style={{ fontSize: '.88rem', marginBottom: 16 }}>Add a country to make virtual numbers available for purchase.</div>
-          <button onClick={openCreate} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>+ Add Country</button>
+          <div style={{ fontSize: '1.05rem', color: '#fff', marginBottom: 6 }}>{tr(lang, 'num_no_countries')}</div>
+          <div style={{ fontSize: '.88rem', marginBottom: 16 }}>{tr(lang, 'num_no_countries_hint')}</div>
+          <button onClick={openCreate} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>+ {tr(lang, 'num_add_country')}</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
@@ -265,29 +268,29 @@ export function NumbersManagement({ session }) {
                     <span style={{ fontWeight: 700, color: '#fff', fontSize: '1rem' }}>{c.name}</span>
                   </div>
                   <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: '.74rem', fontWeight: 600, background: c.active ? 'rgba(46,204,113,.15)' : 'rgba(255,255,255,.06)', color: c.active ? '#2ecc71' : 'var(--muted)', border: `1px solid ${c.active ? 'rgba(46,204,113,.4)' : 'rgba(255,255,255,.15)'}` }}>
-                    ● {c.active ? 'Active' : 'Inactive'}
+                    ● {c.active ? tr(lang, 'num_active') : tr(lang, 'num_inactive')}
                   </span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
                   <div>
-                    <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>Number Types</div>
+                    <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{tr(lang, 'num_number_types')}</div>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{c.typeCount}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>Starting Price</div>
+                    <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{tr(lang, 'num_starting_price')}</div>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{c.startPrice != null ? `৳${c.startPrice.toLocaleString('en-IN')}` : '—'}</div>
-                    {disc > 0 && <div style={{ fontSize: '.7rem', color: '#2ecc71' }}>Save {disc}%</div>}
+                    {disc > 0 && <div style={{ fontSize: '.7rem', color: '#2ecc71' }}>{tr(lang, 'num_save')} {disc}%</div>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setDetail(c)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '.85rem' }}>View Details</button>
+                  <button onClick={() => setDetail(c)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'num_view_details')}</button>
                   <button onClick={() => setMenuOpen(menuOpen === c.name ? null : c.name)} style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: 16 }}>⋯</button>
                 </div>
                 {menuOpen === c.name && (
                   <div style={{ position: 'absolute', bottom: 60, right: 18, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 20, minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,.5)' }}>
-                    <button onClick={() => { setMenuOpen(null); openEdit(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Edit Country</button>
-                    <button onClick={() => { setMenuOpen(null); toggleStatus(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{c.active ? 'Deactivate' : 'Activate'}</button>
-                    <button onClick={() => { setMenuOpen(null); del(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Delete</button>
+                    <button onClick={() => { setMenuOpen(null); openEdit(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'num_edit_country')}</button>
+                    <button onClick={() => { setMenuOpen(null); toggleStatus(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{c.active ? tr(lang, 'num_deactivate') : tr(lang, 'num_activate')}</button>
+                    <button onClick={() => { setMenuOpen(null); del(c) }} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'num_delete')}</button>
                   </div>
                 )}
               </div>
@@ -298,7 +301,7 @@ export function NumbersManagement({ session }) {
 
       {/* Pagination */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, flexWrap: 'wrap', gap: 10 }}>
-        <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, list.length)} of {list.length.toLocaleString()} countries</span>
+        <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'num_showing')} {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'num_to')} {Math.min(curPage * pageSize, list.length)} {tr(lang, 'num_of')} {list.length.toLocaleString()} {tr(lang, 'num_countries_unit')}</span>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
           <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -311,7 +314,7 @@ export function NumbersManagement({ session }) {
           <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
           <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
           <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-            {[20, 50, 100].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+            {[20, 50, 100].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} {tr(lang, 'num_per_page')}</option>)}
           </select>
         </div>
       </div>
@@ -321,25 +324,25 @@ export function NumbersManagement({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 480, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Country Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'num_country_details')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               {flagUrl(detail.name) && <img src={flagUrl(detail.name)} alt={detail.name} style={{ width: 52, height: 36, borderRadius: 4, objectFit: 'cover' }} />}
               <div>
                 <div style={{ fontWeight: 700, color: '#fff', fontSize: '1.05rem' }}>{detail.name}</div>
-                <div style={{ fontSize: '.82rem', color: detail.active ? '#2ecc71' : 'var(--muted)' }}>{detail.active ? '● Active' : '● Inactive'}</div>
+                <div style={{ fontSize: '.82rem', color: detail.active ? '#2ecc71' : 'var(--muted)' }}>{detail.active ? '● ' + tr(lang, 'num_active') : '● ' + tr(lang, 'num_inactive')}</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Number Types: </span><b style={{ color: '#fff' }}>{Array.from(detail.types).join(', ') || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Starting Price: </span><b style={{ color: '#fff' }}>{detail.startPrice != null ? `৳${detail.startPrice.toLocaleString('en-IN')}` : '—'}</b></div>
-              {detail.prevPrice && <div><span style={{ color: 'var(--muted)' }}>Previous Price: </span><b style={{ color: '#fff' }}>৳{detail.prevPrice.toLocaleString('en-IN')}</b> <span style={{ color: '#2ecc71' }}>(Save {discountPct(detail.startPrice, detail.prevPrice)}%)</span></div>}
-              {detail.notes && <div><span style={{ color: 'var(--muted)' }}>Notes: </span><span style={{ color: 'var(--silver)' }}>{detail.notes}</span></div>}
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'num_number_types_label')}</span><b style={{ color: '#fff' }}>{Array.from(detail.types).join(', ') || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'num_starting_price_label')}</span><b style={{ color: '#fff' }}>{detail.startPrice != null ? `৳${detail.startPrice.toLocaleString('en-IN')}` : '—'}</b></div>
+              {detail.prevPrice && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'num_previous_price_label')}</span><b style={{ color: '#fff' }}>৳{detail.prevPrice.toLocaleString('en-IN')}</b> <span style={{ color: '#2ecc71' }}>({tr(lang, 'num_save')} {discountPct(detail.startPrice, detail.prevPrice)}%)</span></div>}
+              {detail.notes && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'num_notes_label')}</span><span style={{ color: 'var(--silver)' }}>{detail.notes}</span></div>}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button onClick={() => { setDetail(null); openEdit(detail) }} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Edit Country</button>
-              <button onClick={() => { setDetail(null); toggleStatus(detail) }} style={{ padding: '10px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{detail.active ? 'Deactivate' : 'Activate'}</button>
+              <button onClick={() => { setDetail(null); openEdit(detail) }} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>{tr(lang, 'num_edit_country')}</button>
+              <button onClick={() => { setDetail(null); toggleStatus(detail) }} style={{ padding: '10px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{detail.active ? tr(lang, 'num_deactivate') : tr(lang, 'num_activate')}</button>
             </div>
           </div>
         </div>
@@ -350,18 +353,18 @@ export function NumbersManagement({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowForm(false)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>{editing ? 'Edit Country' : 'Add Country'}</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{editing ? tr(lang, 'num_edit_country') : tr(lang, 'num_add_country')}</h3>
               <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Country Name *</label><input value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} style={inp} placeholder="e.g. USA" /></div>
-                <div><label style={lbl}>Country Code</label><input value={form.country_code} onChange={e => setForm({ ...form, country_code: e.target.value.toUpperCase() })} style={inp} placeholder="US" maxLength={2} /></div>
+                <div><label style={lbl}>{tr(lang, 'num_country_name')}</label><input value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} style={inp} placeholder={tr(lang, 'num_country_name_placeholder')} /></div>
+                <div><label style={lbl}>{tr(lang, 'num_country_code')}</label><input value={form.country_code} onChange={e => setForm({ ...form, country_code: e.target.value.toUpperCase() })} style={inp} placeholder="US" maxLength={2} /></div>
               </div>
               <div>
-                <label style={lbl}>Supported Service Types</label>
+                <label style={lbl}>{tr(lang, 'num_supported_service_types')}</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {SERVICE_TYPES.map(t => (
+                  {serviceTypes(lang).map(t => (
                     <label key={t} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '7px 12px', borderRadius: 8, border: form.number_types.includes(t) ? '1px solid rgba(232,35,42,.5)' : '1px solid rgba(255,255,255,.12)', background: form.number_types.includes(t) ? 'rgba(232,35,42,.12)' : 'transparent', cursor: 'pointer', fontSize: '.82rem', color: '#fff' }}>
                       <input type="checkbox" checked={form.number_types.includes(t)} onChange={e => setForm({ ...form, number_types: e.target.checked ? [...form.number_types, t] : form.number_types.filter(x => x !== t) })} style={{ accentColor: '#e8232a' }} />
                       {t}
@@ -370,28 +373,28 @@ export function NumbersManagement({ session }) {
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Starting Price (৳) *</label><input type="number" min="0" value={form.starting_price} onChange={e => setForm({ ...form, starting_price: e.target.value })} style={inp} /></div>
-                <div><label style={lbl}>Previous Price (৳) — optional</label><input type="number" min="0" value={form.previous_price} onChange={e => setForm({ ...form, previous_price: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'num_starting_price_form')}</label><input type="number" min="0" value={form.starting_price} onChange={e => setForm({ ...form, starting_price: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'num_previous_price_form')}</label><input type="number" min="0" value={form.previous_price} onChange={e => setForm({ ...form, previous_price: e.target.value })} style={inp} /></div>
               </div>
               {form.previous_price && form.starting_price && Number(form.previous_price) > Number(form.starting_price) && (
                 <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(46,204,113,.1)', color: '#2ecc71', fontSize: '.85rem' }}>
-                  Discount: Save {discountPct(form.starting_price, form.previous_price)}%
+                  {tr(lang, 'num_discount_save')} {discountPct(form.starting_price, form.previous_price)}%
                 </div>
               )}
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '.88rem', color: '#fff' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} style={{ accentColor: '#e8232a', width: 17, height: 17 }} /> Active
+                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} style={{ accentColor: '#e8232a', width: 17, height: 17 }} /> {tr(lang, 'num_active')}
                 </label>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '.88rem', color: '#fff' }}>
-                  <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} style={{ accentColor: '#e8232a', width: 17, height: 17 }} /> Visible on Public Site
+                  <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} style={{ accentColor: '#e8232a', width: 17, height: 17 }} /> {tr(lang, 'num_visible_public')}
                 </label>
               </div>
-              <div><label style={lbl}>Admin Notes (optional)</label><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder="Internal notes…" /></div>
+              <div><label style={lbl}>{tr(lang, 'num_admin_notes')}</label><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder={tr(lang, 'num_admin_notes_placeholder')} /></div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" disabled={busy === 'save'} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  {busy === 'save' ? 'Saving…' : editing ? 'Update Country' : 'Add Country'}
+                  {busy === 'save' ? tr(lang, 'num_saving') : editing ? tr(lang, 'num_update_country') : tr(lang, 'num_add_country')}
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'num_cancel')}</button>
               </div>
             </form>
           </div>

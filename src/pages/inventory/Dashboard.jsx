@@ -8,6 +8,7 @@ export function Dashboard({ session }) {
   const [recent, setRecent] = useState([])
   const [lowStock, setLowStock] = useState([])
   const [monthly, setMonthly] = useState([])
+  const [range, setRange] = useState(6)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,13 +34,14 @@ export function Dashboard({ session }) {
           .select('id,customer_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
         setRecent(ords || [])
-        // Monthly sales (last 6 months)
-        const sixAgo = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 5); sixAgo.setDate(1)
+        // Monthly sales (dynamic range)
+        const monthsBack = range === 12 ? 11 : 5
+        const rangeAgo = new Date(); rangeAgo.setMonth(rangeAgo.getMonth() - monthsBack); rangeAgo.setDate(1)
         const { data: mall } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', sixAgo.toISOString()), { data: [] })
+          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', rangeAgo.toISOString()), { data: [] })
         const bn = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে']
         const buckets = []
-        for (let i = 5; i >= 0; i--) {
+        for (let i = monthsBack; i >= 0; i--) {
           const d = new Date(); d.setMonth(d.getMonth() - i)
           buckets.push({ label: bn[d.getMonth()], total: 0, key: `${d.getFullYear()}-${d.getMonth()}` })
         }
@@ -53,31 +55,37 @@ export function Dashboard({ session }) {
       } catch (e) { err(e) }
       finally { setLoading(false) }
     })()
-  }, [])
+  }, [range])
 
   if (loading) return <p style={{color:'var(--muted)', padding:20}}>লোড হচ্ছে…</p>
 
   const cards = [
-    { label: 'সক্রিয় প্রোডাক্ট', value: stats.products, icon: <IBox />, color: '#4da3ff' },
-    { label: 'পেন্ডিং অর্ডার', value: stats.pendingOrders, icon: <IClock />, color: '#ffb84d' },
-    { label: '৩০ দিনের বিক্রয়', value: money(stats.revenue30d), icon: <IMoney />, color: '#4dff88' },
-    { label: 'লো স্টক', value: lowStock.length, icon: <IWarn />, color: '#ff7d7d' },
+    { label: 'সক্রিয় প্রোডাক্ট', value: stats.products, icon: <IBox />, color: '#4da3ff', bg: 'rgba(77,163,255,.12)' },
+    { label: 'পেন্ডিং অর্ডার', value: stats.pendingOrders, icon: <IClock />, color: '#ffb84d', bg: 'rgba(255,184,77,.12)' },
+    { label: '৩০ দিনের বিক্রয়', value: money(stats.revenue30d), icon: <IMoney />, color: '#4dff88', bg: 'rgba(77,255,136,.10)' },
+    { label: 'লো স্টক', value: lowStock.length, icon: <IWarn />, color: '#ff7d7d', bg: 'rgba(255,125,125,.10)' },
   ]
 
   return (
     <div>
       <div className="dash-grid">
         {cards.map((c, i) => (
-          <div key={i} className="card dash-card" style={{borderTop:`3px solid ${c.color}`}}>
-            <div style={{marginBottom:4}}>{c.icon}</div>
+          <div key={i} className="dash-card" style={{borderTop:`3px solid ${c.color}`}}>
+            <div className="dash-icon" style={{background: c.bg, color: c.color}}>{c.icon}</div>
             <div className="dash-val">{c.value}</div>
             <div className="dash-label">{c.label}</div>
           </div>
         ))}
       </div>
 
-      <div className="card" style={{padding:20, marginBottom:16}}>
-        <h3 style={{marginBottom:14}}>📊 মাসিক বিক্রয় (শেষ ৬ মাস)</h3>
+      <div className="chart-wrap">
+        <div className="panel-head">
+          <h3>📊 মাসিক বিক্রয়</h3>
+          <div className="chart-controls">
+            <button className={`chart-btn ${range===6?'active':''}`} onClick={()=>setRange(6)}>৬ মাস</button>
+            <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
+          </div>
+        </div>
         {(() => {
           const max = Math.max(...monthly.map(m => m.total), 1)
           return (
@@ -100,9 +108,11 @@ export function Dashboard({ session }) {
         })()}
       </div>
 
-      <div className="dash-cols">
-        <div className="card" style={{padding:18}}>
-          <h3 style={{marginBottom:12}}>🕘 সাম্প্রতিক অর্ডার</h3>
+      <div className="dash-panels">
+        <div className="panel">
+          <div className="panel-head">
+            <h3>🕘 সাম্প্রতিক অর্ডার</h3>
+          </div>
           {recent.length === 0 ? <p style={{color:'var(--muted)'}}>কোনো অর্ডার নেই</p> : (
             <div className="tbl-wrap"><div className="tbl-wrap"><table className="tbl">
               <thead><tr><th>ক্রেতা</th><th>মোট</th><th>স্ট্যাটাস</th></tr></thead>
@@ -112,8 +122,10 @@ export function Dashboard({ session }) {
             </table></div></div>
           )}
         </div>
-        <div className="card" style={{padding:18}}>
-          <h3 style={{marginBottom:12}}>⚠️ লো স্টক অ্যালার্ট</h3>
+        <div className="panel">
+          <div className="panel-head">
+            <h3>⚠️ লো স্টক অ্যালার্ট</h3>
+          </div>
           {lowStock.length === 0 ? <p style={{color:'var(--muted)'}}>সব ঠিক আছে ✅</p> : (
             <ul style={{listStyle:'none', padding:0, margin:0}}>
               {lowStock.map(p => (

@@ -373,6 +373,14 @@ export default async function handler(req, res) {
       return ok(res, { items: r.data })
     }
 
+    if (action === 'order.items_bulk') {
+      const ids = Array.isArray(b.order_ids) ? b.order_ids.map(Number).filter(Boolean) : []
+      if (ids.length === 0) return ok(res, { items: [] })
+      const r = await sbGet(`cashskillbd_sale_items?order_id=in.(${ids.join(',')})&select=*,cashskillbd_products(name,sku)&limit=1000`)
+      if (!r.ok) throw new Error('db error')
+      return ok(res, { items: r.data })
+    }
+
     if (action === 'order.get') {
       const id = reqInt(b.id, 1)
       const o = await sbGet(`cashskillbd_sales_orders?id=eq.${id}&select=*`)

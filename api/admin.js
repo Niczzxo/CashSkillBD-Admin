@@ -139,8 +139,32 @@ export default async function handler(req, res) {
 
     // ── seminar registrations (read-only) ──
     if (action === 'list_seminar_regs') {
-      const r = await sbGet(`cashskillbd_seminar_regs?select=id,name,mobile,email,created_at&order=created_at.desc`)
+      const r = await sbGet(`cashskillbd_seminar_regs?select=*&order=created_at.desc`)
       return res.status(200).json({ regs: r.data || [] })
+    }
+
+    if (action === 'add_seminar_reg') {
+      const { name, mobile, email } = req.body || {}
+      if (!name || !mobile) return res.status(400).json({ error: 'name and mobile required' })
+      const r = await sbReq('cashskillbd_seminar_regs', 'POST', { name: name.trim(), mobile: mobile.trim(), email: (email || '').trim() || null })
+      if (!r.ok) return res.status(500).json({ error: 'insert failed' })
+      return res.status(200).json({ added: true })
+    }
+
+    if (action === 'delete_seminar_reg') {
+      const { id } = req.body || {}
+      if (!id) return res.status(400).json({ error: 'id required' })
+      const r = await sbReq(`cashskillbd_seminar_regs?id=eq.${id}`, 'DELETE')
+      if (!r.ok) return res.status(404).json({ error: 'not found' })
+      return res.status(200).json({ deleted: true })
+    }
+
+    if (action === 'toggle_seminar_checkin') {
+      const { id, checked_in } = req.body || {}
+      if (!id) return res.status(400).json({ error: 'id required' })
+      const r = await sbReq(`cashskillbd_seminar_regs?id=eq.${id}`, 'PATCH', { checked_in: !!checked_in })
+      if (!r.ok) return res.status(400).json({ error: 'checked_in column may not exist' })
+      return res.status(200).json({ updated: true })
     }
 
     return res.status(400).json({ error: 'unknown action' })

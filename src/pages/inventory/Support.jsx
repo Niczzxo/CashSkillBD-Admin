@@ -7,7 +7,9 @@ async function adminApi(session, action, payload = {}) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
     body: JSON.stringify({ action, ...payload }),
   })
-  const j = await r.json()
+  const text = await r.text()
+  let j
+  try { j = JSON.parse(text) } catch { throw new Error('API unavailable on static hosting — use Vercel version for this action') }
   if (!r.ok) throw new Error(j.error || 'failed')
   return j
 }
@@ -190,7 +192,10 @@ export function SeminarRegs({ session }) {
       const j = await adminApi(session, 'list_seminar_regs')
       setRows(j.regs || [])
     } catch (e) {
-      setErr(e.message)
+      // GitHub Pages (static) has no /api — fall back to direct Supabase read
+      const { data, error } = await supabase.from('cashskillbd_seminar_regs').select('*').order('created_at', { ascending: false })
+      if (error) setErr(e.message)
+      else setRows(data || [])
     } finally {
       setLoading(false)
     }

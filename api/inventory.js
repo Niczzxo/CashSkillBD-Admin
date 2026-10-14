@@ -267,6 +267,13 @@ export default async function handler(req, res) {
       return ok(res, { items: r.data })
     }
 
+    if (action === 'price.history_all') {
+      const { limit, offset } = pg(b)
+      const r = await sbGet(`cashskillbd_price_history?select=*,cashskillbd_products(name,sku,category)&order=changed_at.desc&limit=${limit}&offset=${offset}`)
+      if (!r.ok) throw new Error('db error')
+      return ok(res, { items: r.data })
+    }
+
     if (action === 'stock.movements') {
       const { limit, offset } = pg(b)
       let q = `cashskillbd_stock_movements?select=*,cashskillbd_products(name,sku)&order=created_at.desc&limit=${limit}&offset=${offset}`

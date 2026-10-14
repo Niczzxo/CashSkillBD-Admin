@@ -143,11 +143,21 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true })
     }
 
-    // ── order: admin notes ──
+    // ── order: admin notes (append with author + timestamp, JSON array in admin_notes) ──
     if (action === 'order.notes') {
       if (!['admin', 'finance'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
       const { order_id, notes } = req.body || {}
-      await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { admin_notes: String(notes || '').slice(0, 2000) })
+      const text = String(notes || '').trim().slice(0, 2000)
+      if (!text) return res.status(400).json({ error: 'empty note' })
+      const cur = await sbGet(`cashskillbd_orders?id=eq.${Number(order_id)}&select=admin_notes`)
+      let arr = []
+      const raw = cur.data?.[0]?.admin_notes
+      if (raw) {
+        try { const p = JSON.parse(raw); if (Array.isArray(p)) arr = p } catch { arr = [{ text: raw, by: 'Admin', at: null }] }
+      }
+      arr.push({ text, by: me.id, at: new Date().toISOString() })
+      await sbReq(`cashskillbd_orders?id=eq.${Number(order_id)}`, 'PATCH', { admin_notes: JSON.stringify(arr) })
+      await sbReq('cashskillbd_audit_logs', 'POST', { actor_id: me.id, action: 'order.note', entity_type: 'order', entity_id: String(order_id), old_values: null, new_values: { note: text } }, 'return=minimal')
       return res.status(200).json({ ok: true })
     }
 

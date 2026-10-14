@@ -8,7 +8,10 @@ export function Dashboard({ session, goSec }) {
   const [recent, setRecent] = useState([])
   const [lowStock, setLowStock] = useState([])
   const [monthly, setMonthly] = useState([])
-  const [range, setRange] = useState(6)
+  const [selMonth, setSelMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+  })
   const [quick, setQuick] = useState({ users: 0, members: 0, tickets: 0, approvals: 0 })
   const [loading, setLoading] = useState(true)
 
@@ -45,30 +48,21 @@ export function Dashboard({ session, goSec }) {
           .select('id,customer_name,product_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
         setRecent(ords || [])
-        // Sales chart (dynamic range: 1, 3, 6, 12 months)
-        const bn = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে']
-        const buckets = []
-        let rangeAgo
-        if (range === 1) {
-          // Daily buckets for last 30 days
-          rangeAgo = new Date(); rangeAgo.setDate(rangeAgo.getDate() - 29); rangeAgo.setHours(0,0,0,0)
-          for (let i = 29; i >= 0; i--) {
-            const d = new Date(); d.setDate(d.getDate() - i)
-            buckets.push({ label: `${d.getDate()}`, total: 0, orders: 0, key: d.toISOString().slice(0,10) })
-          }
-        } else {
-          const monthsBack = range === 12 ? 11 : range === 3 ? 2 : 5
-          rangeAgo = new Date(); rangeAgo.setMonth(rangeAgo.getMonth() - monthsBack); rangeAgo.setDate(1)
-          for (let i = monthsBack; i >= 0; i--) {
-            const d = new Date(); d.setMonth(d.getMonth() - i)
-            buckets.push({ label: bn[d.getMonth()], total: 0, orders: 0, key: `${d.getFullYear()}-${d.getMonth()}` })
-          }
-        }
+        // Sales chart: daily data for selected month
+        const [y, m] = selMonth.split('-').map(Number)
+        const daysInMonth = new Date(y, m, 0).getDate()
+        const rangeAgo = new Date(y, m - 1, 1)
+        const rangeEnd = new Date(y, m, 0, 23, 59, 59)
         const { data: mall } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', rangeAgo.toISOString()), { data: [] })
+          .select('grand_total,created_at').eq('status', 'confirmed')
+          .gte('created_at', rangeAgo.toISOString()).lte('created_at', rangeEnd.toISOString()), { data: [] })
+        const buckets = []
+        for (let d = 1; d <= daysInMonth; d++) {
+          buckets.push({ label: `${d}`, total: 0, orders: 0, key: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` })
+        }
         ;(mall || []).forEach(o => {
-          const d = new Date(o.created_at)
-          const k = range === 1 ? d.toISOString().slice(0,10) : `${d.getFullYear()}-${d.getMonth()}`
+          const dt = new Date(o.created_at)
+          const k = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
           const b = buckets.find(x => x.key === k)
           if (b) { b.total += Number(o.grand_total || 0); b.orders += 1 }
         })
@@ -76,7 +70,7 @@ export function Dashboard({ session, goSec }) {
       } catch (e) { err(e) }
       finally { setLoading(false) }
     })()
-  }, [range])
+  }, [selMonth])
 
   if (loading) return <p style={{color:'var(--muted)', padding:20}}>লোড হচ্ছে…</p>
 
@@ -142,14 +136,21 @@ export function Dashboard({ session, goSec }) {
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
               <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
               <select
-                value={range}
-                onChange={(e) => setRange(Number(e.target.value))}
+                value={selMonth}
+                onChange={(e) => setSelMonth(e.target.value)}
                 style={{padding:'6px 12px', background:'rgba(255,255,255,.04)', border:'1px solid var(--border)', borderRadius:8, fontSize:'.85rem', color:'var(--silver)', cursor:'pointer', outline:'none'}}
               >
-                <option value={1} style={{background:'#1a0d0e'}}>📅 {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} (১ মাস)</option>
-                <option value={3} style={{background:'#1a0d0e'}}>📅 Last 3 Months</option>
-                <option value={6} style={{background:'#1a0d0e'}}>📅 Last 6 Months</option>
-                <option value={12} style={{background:'#1a0d0e'}}>📅 Last 12 Months</option>
+                {(() => {
+                  const opts = []
+                  const now = new Date()
+                  for (let i = 0; i < 12; i++) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+                    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    opts.push(<option key={val} value={val} style={{background:'#1a0d0e'}}>📅 {label}</option>)
+                  }
+                  return opts
+                })()}
               </select>
             </div>
             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
@@ -157,12 +158,7 @@ export function Dashboard({ session, goSec }) {
                 <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#ff5b5b', marginRight:6}} />Sales</span>
                 <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#666', marginRight:6}} />Orders</span>
               </div>
-              <div className="chart-controls">
-                <button className={`chart-btn ${range===1?'active':''}`} onClick={()=>setRange(1)}>১ মাস</button>
-                <button className={`chart-btn ${range===3?'active':''}`} onClick={()=>setRange(3)}>৩ মাস</button>
-                <button className={`chart-btn ${range===6?'active':''}`} onClick={()=>setRange(6)}>৬ মাস</button>
-                <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
-              </div>
+
             </div>
           </div>
           {monthly.every(m => m.total === 0) ? (

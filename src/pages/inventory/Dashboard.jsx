@@ -45,20 +45,30 @@ export function Dashboard({ session, goSec }) {
           .select('id,customer_name,product_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
         setRecent(ords || [])
-        // Monthly sales (dynamic range)
-        const monthsBack = range === 12 ? 11 : 5
-        const rangeAgo = new Date(); rangeAgo.setMonth(rangeAgo.getMonth() - monthsBack); rangeAgo.setDate(1)
-        const { data: mall } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', rangeAgo.toISOString()), { data: [] })
+        // Sales chart (dynamic range: 1, 3, 6, 12 months)
         const bn = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে']
         const buckets = []
-        for (let i = monthsBack; i >= 0; i--) {
-          const d = new Date(); d.setMonth(d.getMonth() - i)
-          buckets.push({ label: bn[d.getMonth()], total: 0, orders: 0, key: `${d.getFullYear()}-${d.getMonth()}` })
+        let rangeAgo
+        if (range === 1) {
+          // Daily buckets for last 30 days
+          rangeAgo = new Date(); rangeAgo.setDate(rangeAgo.getDate() - 29); rangeAgo.setHours(0,0,0,0)
+          for (let i = 29; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i)
+            buckets.push({ label: `${d.getDate()}`, total: 0, orders: 0, key: d.toISOString().slice(0,10) })
+          }
+        } else {
+          const monthsBack = range === 12 ? 11 : range === 3 ? 2 : 5
+          rangeAgo = new Date(); rangeAgo.setMonth(rangeAgo.getMonth() - monthsBack); rangeAgo.setDate(1)
+          for (let i = monthsBack; i >= 0; i--) {
+            const d = new Date(); d.setMonth(d.getMonth() - i)
+            buckets.push({ label: bn[d.getMonth()], total: 0, orders: 0, key: `${d.getFullYear()}-${d.getMonth()}` })
+          }
         }
+        const { data: mall } = await safe(() => supabase.from('cashskillbd_sales_orders')
+          .select('grand_total,created_at').eq('status', 'confirmed').gte('created_at', rangeAgo.toISOString()), { data: [] })
         ;(mall || []).forEach(o => {
           const d = new Date(o.created_at)
-          const k = `${d.getFullYear()}-${d.getMonth()}`
+          const k = range === 1 ? d.toISOString().slice(0,10) : `${d.getFullYear()}-${d.getMonth()}`
           const b = buckets.find(x => x.key === k)
           if (b) { b.total += Number(o.grand_total || 0); b.orders += 1 }
         })
@@ -131,6 +141,8 @@ export function Dashboard({ session, goSec }) {
           <div className="panel-head">
             <h3 style={{display:'flex', alignItems:'center', gap:8}}><IChart size={20} /> Monthly Sales Overview</h3>
             <div className="chart-controls">
+              <button className={`chart-btn ${range===1?'active':''}`} onClick={()=>setRange(1)}>১ মাস</button>
+              <button className={`chart-btn ${range===3?'active':''}`} onClick={()=>setRange(3)}>৩ মাস</button>
               <button className={`chart-btn ${range===6?'active':''}`} onClick={()=>setRange(6)}>৬ মাস</button>
               <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
             </div>

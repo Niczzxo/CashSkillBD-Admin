@@ -726,3 +726,16 @@ html, body, #root { width: 100%; margin: 0; padding: 0; }
 .admin-layout { width: 100%; max-width: none; margin: 0; padding: 0; display: flex; gap: 0; }
 .admin-main { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 24px; box-sizing: border-box; flex: 1; }
 .admin-side { border-radius: 0 !important; border-left: none !important; border-top: none !important; border-bottom: none !important; margin: 0; height: calc(100vh - 68px) !important; }
+
+/* ── Admin header: collapsible sidebar groups + mobile search ── */
+.admin-side .grp-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px 12px 6px; background: none; border: none; color: var(--muted); font-size: .72rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; font-family: var(--font); cursor: pointer; }
+.admin-side .grp-head:hover { color: var(--silver); }
+.admin-side .grp-chev { font-size: 1rem; transition: transform .15s; color: var(--muted); }
+.admin-search-mob-btn { display: none; }
+@media (max-width: 920px) {
+  .admin-search-desktop { display: none !important; }
+  .admin-search-mob-btn { display: grid !important; }
+}
+@media (min-width: 921px) {
+  .admin-layout.side-collapsed .admin-side { display: none; }
+}

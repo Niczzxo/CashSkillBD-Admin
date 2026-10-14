@@ -1,161 +1,442 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
-import { money, dstrD, err, isFinance, Tbl, Empty, inp, FinanceOnly } from './common.jsx'
-import { Expenses } from './Expenses.jsx'
+import { supabase } from '../../lib/supabase.js'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const monthAgo = () => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10)
-
-function Stat({ icon, label, value, cur, accent }) {
-  return (
-    <div className="card" style={{ padding: '18px 20px' }}>
-      <small style={{ color: 'var(--muted)' }}>{icon} {label}</small>
-      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: accent || '#fff', marginTop: 4 }}>{money(value, cur)}</div>
-    </div>
-  )
-}
+const fmtMoney = (v, cur) => `${cur === 'USD' ? '$' : '৳'} ${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 
 export function Reports({ session, role }) {
-  const fin = isFinance(role)
   const [from, setFrom] = useState(monthAgo)
   const [to, setTo] = useState(todayStr)
   const [cur, setCur] = useState('BDT')
+  const [period, setPeriod] = useState('daily')
   const [sum, setSum] = useState(null)
+  const [orders, setOrders] = useState([])
+  const [purchases, setPurchases] = useState([])
   const [prodSales, setProdSales] = useState([])
-  const [lowStock, setLowStock] = useState([])
-  const [expDays, setExpDays] = useState('14')
-  const [expiring, setExpiring] = useState([])
-  const [loading, setLoading] = useState(false)
-
-  if (!fin) return <FinanceOnly />
+  const [products, setProducts] = useState([])
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
+  const [detail, setDetail] = useState(null)
 
   const run = async () => {
     setLoading(true)
     try {
-      const [s, ps, ls] = await Promise.all([
+      const [s, ps, o, pu, pr] = await Promise.all([
         manageApi(session, 'report.summary', { from, to, currency: cur }),
         manageApi(session, 'report.product_sales', { from, to }),
-        manageApi(session, 'report.low_stock'),
+        manageApi(session, 'order.list', { limit: 500, offset: 0 }),
+        manageApi(session, 'purchase.list', { limit: 500, offset: 0 }).catch(() => ({ items: [] })),
+        manageApi(session, 'product.list', { limit: 500, offset: 0 }).catch(() => ({ items: [] })),
       ])
-      setSum(s); setProdSales(ps.items || []); setLowStock(ls.items || [])
-    } catch (e) { err(e) }
+      setSum(s)
+      setProdSales(ps.items || [])
+      setOrders(o.items || [])
+      setPurchases(pu.items || [])
+      setProducts(pr.items || [])
+      // Recent customers (members, newest first)
+      const { data: profs } = await supabase.from('cashskillbd_profiles').select('id,full_name,email,avatar_url,created_at').eq('role', 'member').order('created_at', { ascending: false }).limit(5)
+      setCustomers(profs || [])
+    } catch (e) { alert('❌ ' + e.message) }
     setLoading(false)
   }
+  useEffect(() => { run() }, [])
 
-  const runExpiring = async () => {
-    try {
-      const j = await manageApi(session, 'report.expiring', { days: Number(expDays) || 14 })
-      setExpiring(j.items || [])
-    } catch (e) { err(e) }
+  // ── Filtered data ──
+  const fromDate = new Date(from + 'T00:00:00')
+  const toDate = new Date(to + 'T23:59:59')
+  const inRange = (d) => { const t = new Date(d); return t >= fromDate && t <= toDate }
+  const rangeOrders = useMemo(() => orders.filter(o => inRange(o.created_at) && (cur === 'BDT' ? (o.currency || 'BDT') === 'BDT' : (o.currency || 'BDT') === 'USD')), [orders, from, to, cur])
+  const rangePurchases = useMemo(() => purchases.filter(p => inRange(p.purchased_at || p.created_at) && (cur === 'BDT' ? (p.currency || 'BDT') === 'BDT' : (p.currency || 'BDT') === 'USD')), [purchases, from, to, cur])
+
+  // ── KPI ──
+  const totalSales = sum?.revenue || 0
+  const totalOrders = rangeOrders.length
+  const newCustomers = customers.length
+  const totalPurchaseAmt = sum?.purchase_costs || 0
+  const totalProfit = sum?.net_profit || 0
+
+  // ── Order status donut ──
+  const statusCounts = { completed: 0, processing: 0, pending: 0, cancelled: 0 }
+  rangeOrders.forEach(o => {
+    if (o.status === 'delivered') statusCounts.completed++
+    else if (o.status === 'confirmed') statusCounts.processing++
+    else if (o.status === 'pending') statusCounts.pending++
+    else statusCounts.cancelled++
+  })
+  const totalStatusOrders = rangeOrders.length
+
+  // ── Daily chart series ──
+  const chartData = useMemo(() => {
+    const days = []
+    const start = new Date(fromDate)
+    const end = new Date(toDate)
+    const salesByDay = {}, purchByDay = {}
+    rangeOrders.filter(o => ['confirmed', 'delivered'].includes(o.status)).forEach(o => {
+      const d = o.created_at.slice(0, 10)
+      salesByDay[d] = (salesByDay[d] || 0) + Number(o.grand_total || 0)
+    })
+    rangePurchases.forEach(p => {
+      const d = (p.purchased_at || p.created_at).slice(0, 10)
+      purchByDay[d] = (purchByDay[d] || 0) + Number(p.total_cost || 0)
+    })
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10)
+      days.push({ date: key, label: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), sales: salesByDay[key] || 0, purchases: purchByDay[key] || 0 })
+    }
+    return days
+  }, [rangeOrders, rangePurchases, from, to])
+
+  // ── Sales by payment method ──
+  const payMethodTotals = {}
+  rangeOrders.forEach(o => {
+    const m = o.payment_method || '—'
+    payMethodTotals[m] = (payMethodTotals[m] || 0) + Number(o.grand_total || 0)
+  })
+  const payMethods = Object.entries(payMethodTotals).sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+  // ── Inventory overview ──
+  const invIn = products.filter(p => Number(p.stock_qty || 0) > Number(p.low_stock_at ?? 5)).length
+  const invLow = products.filter(p => Number(p.stock_qty || 0) > 0 && Number(p.stock_qty || 0) <= Number(p.low_stock_at ?? 5)).length
+  const invOut = products.filter(p => Number(p.stock_qty || 0) <= 0).length
+
+  // ── Recent transactions (sales + purchases) ──
+  const transactions = [
+    ...rangeOrders.map(o => ({ id: `ord-${o.id}`, date: o.created_at, type: 'sale', ref: o.order_no || `#CSB${o.id}`, desc: o.customer_name || 'Order', amount: Number(o.grand_total || 0), pay: o.payment_method || '—', status: o.status, order: o })),
+    ...rangePurchases.map(p => ({ id: `pur-${p.id}`, date: p.purchased_at || p.created_at, type: 'purchase', ref: `#PUR${p.id}`, desc: p.cashskillbd_products?.name || `Product #${p.product_id}`, amount: Number(p.total_cost || 0), pay: p.cashskillbd_suppliers?.name || '—', status: 'completed', purchase: p })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date))
+
+  const totalPages = Math.max(1, Math.ceil(transactions.length / pageSize))
+  const curPage = Math.min(page, totalPages)
+  const pageItems = transactions.slice((curPage - 1) * pageSize, curPage * pageSize)
+
+  // ── Chart SVG ──
+  const chartW = 640, chartH = 220
+  const maxVal = Math.max(1, ...chartData.map(d => Math.max(d.sales, d.purchases)))
+  const point = (idx, val) => {
+    const x = chartData.length <= 1 ? 20 : 20 + (idx / (chartData.length - 1)) * (chartW - 40)
+    const y = chartH - 30 - (val / maxVal) * (chartH - 50)
+    return [x, y]
   }
+  const salesPath = chartData.map((d, i) => point(i, d.sales).join(',')).join(' ')
+  const purchPath = chartData.map((d, i) => point(i, d.purchases).join(',')).join(' ')
+  const salesArea = chartData.length ? `20,${chartH - 30} ${salesPath} ${chartW - 20},${chartH - 30}` : ''
+  const purchArea = chartData.length ? `20,${chartH - 30} ${purchPath} ${chartW - 20},${chartH - 30}` : ''
+
+  // ── Donut SVG ──
+  const donutColors = { completed: '#2ecc71', processing: '#4da3ff', pending: '#f5b942', cancelled: '#ff6b6b' }
+  const donutLabels = { completed: 'সম্পন্ন', processing: 'প্রক্রিয়াধীন', pending: 'অপেক্ষমান', cancelled: 'বাতিল' }
+  let donutAcc = 0
+  const donutSegments = Object.entries(statusCounts).map(([k, v]) => {
+    const pct = totalStatusOrders > 0 ? v / totalStatusOrders : 0
+    const seg = { key: k, value: v, pct, start: donutAcc, end: donutAcc + pct }
+    donutAcc += pct
+    return seg
+  })
+  const polar = (frac) => {
+    const angle = frac * 2 * Math.PI - Math.PI / 2
+    return [60 + 48 * Math.cos(angle), 60 + 48 * Math.sin(angle)]
+  }
+  const donutPath = (seg) => {
+    if (seg.pct === 0) return ''
+    if (seg.pct >= 1) return `M 60 12 A 48 48 0 1 1 59.99 12 Z`
+    const [x1, y1] = polar(seg.start)
+    const [x2, y2] = polar(seg.end)
+    return `M 60 60 L ${x1} ${y1} A 48 48 0 ${seg.pct > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`
+  }
+
+  const stats = [
+    { label: 'মোট বিক্রি', value: fmtMoney(totalSales, cur), desc: 'গত সময়ের তুলনায়', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🛒', trend: null },
+    { label: 'মোট অর্ডার', value: totalOrders.toLocaleString(), desc: 'গত সময়ের তুলনায়', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🧾', trend: null },
+    { label: 'নতুন কাস্টমার', value: newCustomers.toLocaleString(), desc: 'গত সময়ের তুলনায়', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '👥', trend: null },
+    { label: 'মোট ক্রয়', value: fmtMoney(totalPurchaseAmt, cur), desc: 'গত সময়ের তুলনায়', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📦', trend: null },
+    { label: 'মোট মুনাফা', value: fmtMoney(totalProfit, cur), desc: 'গত সময়ের তুলনায়', color: '#c084fc', bg: 'rgba(192,132,252,.15)', icon: '💰', trend: null },
+  ]
+
+  const avatarColors = ['#e8232a', '#4da3ff', '#2ecc71', '#f5b942', '#e84393', '#8e44ad', '#00cec9']
+  const initials = (name) => (name || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
+
+  const goSec = (sec) => { window.location.hash = `#/${sec}` }
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 14px' }}>📈 লাভ-ক্ষতি রিপোর্ট</h3>
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📊</div>
           <div>
-            <label style={{ color: 'var(--muted)', fontSize: '.85rem' }}>থেকে</label><br />
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={inp} />
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Reports</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>View detailed reports and analytics for sales, purchases, customers, and inventory.</p>
           </div>
-          <div>
-            <label style={{ color: 'var(--muted)', fontSize: '.85rem' }}>পর্যন্ত</label><br />
-            <input type="date" value={to} onChange={e => setTo(e.target.value)} style={inp} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9, padding: '6px 10px' }}>
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
+            <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>to</span>
+            <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
           </div>
-          <div className="tabs" style={{ justifyContent: 'flex-start', marginBottom: 0 }}>
-            {['BDT', 'USD'].map(c => (
-              <button key={c} className={`tab ${cur === c ? 'active' : ''}`} onClick={() => setCur(c)}>{c === 'BDT' ? '৳ BDT' : '$ USD'}</button>
-            ))}
+          <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.03)', borderRadius: 9, padding: 3 }}>
+            <button onClick={() => setCur('BDT')} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: cur === 'BDT' ? '#e8232a' : 'transparent', color: '#fff' }}>৳ BDT</button>
+            <button onClick={() => setCur('USD')} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: cur === 'USD' ? 'rgba(255,255,255,.1)' : 'transparent', color: '#fff' }}>$ USD</button>
           </div>
-          <button className="btn btn-sm" disabled={loading} onClick={run}>{loading ? 'লোড হচ্ছে…' : '📊 রিপোর্ট দেখুন'}</button>
+          <button onClick={run} disabled={loading} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+            {loading ? 'Generating…' : 'Generate Report'}
+          </button>
         </div>
       </div>
 
-      {sum && (
-        <>
-          <div className="grid grid-4" style={{ marginBottom: 8 }}>
-            <Stat icon="💰" label="বিক্রয় (Revenue)" value={sum.revenue} cur={cur} accent="#7dffa8" />
-            <Stat icon="📦" label="পণ্য খরচ (COGS)" value={sum.cogs} cur={cur} />
-            <Stat icon="📊" label="গ্রস মার্জিন" value={sum.gross_margin} cur={cur} accent="#7dffa8" />
-            <Stat icon="💸" label="খরচ (Expenses)" value={sum.expenses} cur={cur} accent="#ff9a9a" />
+      {/* KPI Cards */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ flex: 1, minWidth: 170, background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: `1px solid ${s.color}55`, borderRadius: 14, padding: 18, display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, background: s.bg, display: 'grid', placeItems: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{s.label}</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{s.value}</div>
+              <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{s.desc}</div>
+            </div>
           </div>
-          <div className="grid grid-4" style={{ marginBottom: 8 }}>
-            <Stat icon="✅" label="নিট লাভ" value={sum.net_profit} cur={cur} accent={Number(sum.net_profit) >= 0 ? '#7dffa8' : '#ff9a9a'} />
-            <Stat icon="💵" label="ডলার মার্জিন" value={sum.dollar.gross_margin} cur={cur} />
-            <Stat icon="💵" label="ডলার নিট" value={sum.dollar.net_profit} cur={cur} />
-            <Stat icon="🏚️" label="স্টক মূল্যায়ন" value={sum.stock_valuation} cur={cur} />
-          </div>
-          <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: 26, background: 'rgba(232,35,42,.07)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px' }}>
-            💡 <b>বিক্রয় (Revenue)</b> = মোট বিক্রি · <b>গ্রস মার্জিন</b> = বিক্রয় − পণ্য খরচ · <b>নিট লাভ</b> = গ্রস মার্জিন − খরচ। নিট লাভ মানেই হাতে নগদ নয় — ক্যাশ ফ্লো আলাদা হিসাব।
-          </p>
+        ))}
+      </div>
 
-          <h3 style={{ margin: '0 0 14px' }}>🏆 প্রোডাক্ট অনুযায়ী বিক্রয়</h3>
-          <div style={{ marginBottom: 26 }}>
-            <Tbl>
-              <thead><tr><th>প্রোডাক্ট</th><th>SKU</th><th>বিক্রীত সংখ্যা</th><th>বিক্রয়</th></tr></thead>
-              <tbody>
-                {prodSales.map(p => (
-                  <tr key={p.product_id}>
-                    <td><b>{p.name || '—'}</b></td>
-                    <td><code>{p.sku || ''}</code></td>
-                    <td>{p.qty}</td>
-                    <td><b>{money(p.revenue, cur)}</b></td>
-                  </tr>
+      {/* Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 20, alignItems: 'start' }}>
+        {/* Sales/Purchase Chart */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20, gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+            <b style={{ color: '#fff' }}>বিক্রয় ও ক্রয়ের প্রবণতা</b>
+            <select value={period} onChange={e => setPeriod(e.target.value)} style={{ padding: '6px 10px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
+              <option value="daily" style={{ background: '#1a0d0e' }}>প্রতি দিন</option>
+              <option value="weekly" style={{ background: '#1a0d0e' }}>প্রতি সপ্তাহ</option>
+              <option value="monthly" style={{ background: '#1a0d0e' }}>প্রতি মাস</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: '.82rem' }}>
+            <span style={{ color: '#ff6b6b' }}>■ বিক্রয় (Sales)</span>
+            <span style={{ color: '#4da3ff' }}>■ ক্রয় (Purchase)</span>
+          </div>
+          {chartData.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>এই সময়ে কোনো data নেই</div>
+          ) : (
+            <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+              {[0, 0.25, 0.5, 0.75, 1].map(f => (
+                <line key={f} x1={20} x2={chartW - 20} y1={chartH - 30 - f * (chartH - 50)} y2={chartH - 30 - f * (chartH - 50)} stroke="rgba(255,255,255,.06)" strokeDasharray="3 3" />
+              ))}
+              <polygon points={salesArea} fill="rgba(232,35,42,.12)" />
+              <polygon points={purchArea} fill="rgba(77,163,255,.08)" />
+              <polyline points={salesPath} fill="none" stroke="#e8232a" strokeWidth="2" />
+              <polyline points={purchPath} fill="none" stroke="#4da3ff" strokeWidth="2" />
+              {chartData.map((d, i) => {
+                if (i % Math.max(1, Math.floor(chartData.length / 8)) !== 0 && i !== chartData.length - 1) return null
+                const [x] = point(i, 0)
+                return <text key={i} x={x} y={chartH - 10} fill="#888" fontSize="10" textAnchor="middle">{d.label}</text>
+              })}
+            </svg>
+          )}
+        </div>
+
+        {/* Donut */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20 }}>
+          <b style={{ color: '#fff', display: 'block', marginBottom: 14 }}>অর্ডার স্ট্যাটাস (এই সময়ে)</b>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
+              <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%' }}>
+                {donutSegments.map(seg => (
+                  <path key={seg.key} d={donutPath(seg)} fill={donutColors[seg.key]} opacity={0.9} />
                 ))}
-              </tbody>
-            </Tbl>
-            {prodSales.length === 0 && <Empty text="এই সময়ে বিক্রয় নেই।" />}
+                <circle cx="60" cy="60" r="32" fill="#120D0E" />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>{totalStatusOrders}</div>
+                  <div style={{ fontSize: '.68rem', color: 'var(--muted)' }}>মোট অর্ডার</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+              {donutSegments.map(seg => (
+                <div key={seg.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem' }}>
+                  <span style={{ color: 'var(--silver)' }}><span style={{ color: donutColors[seg.key] }}>● </span>{donutLabels[seg.key]}</span>
+                  <span style={{ color: '#fff', fontWeight: 600 }}>{seg.value} ({Math.round(seg.pct * 100)}%)</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </>
-      )}
-
-      <h3 style={{ margin: '0 0 14px' }}>⚠️ লো-স্টক অ্যালার্ট</h3>
-      <div style={{ marginBottom: 26 }}>
-        <Tbl>
-          <thead><tr><th>প্রোডাক্ট</th><th>SKU</th><th>স্টক</th><th>সীমা</th><th>স্ট্যাটাস</th></tr></thead>
-          <tbody>
-            {lowStock.map(p => (
-              <tr key={p.id}>
-                <td><b>{p.name}</b></td>
-                <td><code>{p.sku}</code></td>
-                <td style={{ color: '#ff9a9a', fontWeight: 700 }}>{p.stock_qty} ⚠️</td>
-                <td>{p.low_stock_at}</td>
-                <td>{p.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Tbl>
-        {lowStock.length === 0 && <Empty text="সব স্টক ঠিক আছে। ✅" />}
-      </div>
-
-      <h3 style={{ margin: '0 0 14px' }}>⌛ মেয়াদোত্তীর্ণ হতে যাওয়া সার্ভিস</h3>
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--muted)' }}>আগামী</span>
-          <input type="number" min="1" max="365" value={expDays} onChange={e => setExpDays(e.target.value)} style={{ ...inp, width: 90 }} />
-          <span style={{ color: 'var(--muted)' }}>দিনের মধ্যে</span>
-          <button className="btn btn-sm" onClick={runExpiring}>দেখুন</button>
         </div>
       </div>
-      <div style={{ marginBottom: 26 }}>
-        <Tbl>
-          <thead><tr><th>ক্রেতা</th><th>ধরন</th><th>প্রোডাক্ট</th><th>মেয়াদ শেষ</th><th>ফোন</th></tr></thead>
-          <tbody>
-            {expiring.map(s => (
-              <tr key={s.id}>
-                <td><b>{s.customer_name}</b></td>
-                <td>{s.service_type.toUpperCase()}</td>
-                <td>{s.cashskillbd_products?.name || '—'}</td>
-                <td style={{ color: '#f5c86e', fontWeight: 700 }}>{dstrD(s.expires_at)}</td>
-                <td>{s.customer_phone || '—'}</td>
-              </tr>
+
+      {/* Four Panels */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 20 }}>
+        {/* Top Products */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>টপ পণ্য (বিক্রিত)</b>
+            <button onClick={() => goSec('products')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {prodSales.slice(0, 5).map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.85rem' }}>
+                <span style={{ color: 'var(--muted)', width: 16, textAlign: 'center' }}>{i + 1}</span>
+                <span style={{ color: '#fff', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || `Product #${p.product_id}`}</span>
+                <b style={{ color: '#fff' }}>{p.qty}</b>
+              </div>
             ))}
-          </tbody>
-        </Tbl>
-        {expiring.length === 0 && <Empty text="দেখতে উপরের বাটন চাপুন।" />}
+            {prodSales.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো বিক্রি নেই</div>}
+          </div>
+        </div>
+
+        {/* Sales by Payment Method */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>পেমেন্ট মাধ্যম অনুযায়ী বিক্রি</b>
+            <button onClick={() => goSec('orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {payMethods.map(([m, amt], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.85rem' }}>
+                <span style={{ color: '#fff', flex: 1 }}>{m}</span>
+                <b style={{ color: '#fff' }}>{fmtMoney(amt, cur)}</b>
+              </div>
+            ))}
+            {payMethods.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো payment data নেই</div>}
+          </div>
+        </div>
+
+        {/* Inventory Overview */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>স্টক অবস্থা</b>
+            <button onClick={() => goSec('inventory')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>পর্যাপ্ত স্টক</span><b style={{ color: '#2ecc71' }}>{invIn}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>স্বল্প স্টক</span><b style={{ color: '#f5b942' }}>{invLow}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>স্টক শেষ</span><b style={{ color: '#ff6b6b' }}>{invOut}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>মোট পণ্য</span><b style={{ color: '#fff' }}>{products.length}</b></div>
+          </div>
+        </div>
+
+        {/* Recent Customers */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>নতুন কাস্টমার (এই সময়ে)</b>
+            <button onClick={() => goSec('members')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {customers.slice(0, 5).map((c, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.85rem' }}>
+                {c.avatar_url ? (
+                  <img src={c.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColors[i % avatarColors.length], display: 'grid', placeItems: 'center', fontSize: '.68rem', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(c.full_name)}</div>
+                )}
+                <span style={{ color: '#fff', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.full_name || c.email || '—'}</span>
+                <span style={{ color: 'var(--muted)', fontSize: '.78rem' }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+              </div>
+            ))}
+            {customers.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো নতুন কাস্টমার নেই</div>}
+          </div>
+        </div>
       </div>
 
-      <Expenses session={session} role={role} />
+      {/* Recent Transactions */}
+      <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <b style={{ color: '#fff', fontSize: '1.02rem' }}>সাম্প্রতিক লেনদেন</b>
+          <button onClick={() => goSec('sales-orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.82rem' }}>View All</button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                {['#', 'তারিখ', 'ধরন', 'রেফারেন্স', 'বিবরণ', 'পরিমাণ', 'পেমেন্ট মাধ্যম', 'স্ট্যাটাস', 'অ্যাকশন'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((t, i) => (
+                <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                  <td style={{ padding: '12px 14px', color: 'var(--muted)', fontSize: '.85rem' }}>{(curPage - 1) * pageSize + i + 1}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(t.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td style={{ padding: '12px 14px' }}>
+                    {t.type === 'sale' ? (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>বিক্রি</span>
+                    ) : (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>ক্রয়</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--silver)', fontFamily: 'monospace' }}>{t.ref}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: '#fff' }}>{t.desc}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: '#fff', fontWeight: 600 }}>{fmtMoney(t.amount, cur)}</td>
+                  <td style={{ padding: '12px 14px', fontSize: '.85rem', color: 'var(--silver)' }}>{t.pay}</td>
+                  <td style={{ padding: '12px 14px' }}>
+                    {t.status === 'delivered' || t.status === 'completed' ? (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>সম্পন্ন</span>
+                    ) : t.status === 'confirmed' ? (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(77,163,255,.15)', color: '#4da3ff', border: '1px solid rgba(77,163,255,.4)' }}>প্রক্রিয়াধীন</span>
+                    ) : t.status === 'pending' ? (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>অপেক্ষমান</span>
+                    ) : (
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>বাতিল</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '12px 14px' }}>
+                    <button title="View" onClick={() => setDetail(t)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>👁</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {pageItems.length === 0 && !loading && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>কোনো লেনদেন নেই</div>
+            <div style={{ fontSize: '.85rem' }}>এই সময়ে কোনো লেনদেন হয়নি।</div>
+          </div>
+        )}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {transactions.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, transactions.length)} of {transactions.length.toLocaleString()} transactions</span>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - curPage) <= 1).map((p, idx, arr) => (
+              <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {idx > 0 && p - arr[idx - 1] > 1 && <span style={{ color: 'var(--muted)', padding: '0 2px' }}>…</span>}
+                <button onClick={() => setPage(p)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: p === curPage ? '#e8232a' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: p === curPage ? 700 : 400, fontSize: '.85rem' }}>{p}</button>
+              </span>
+            ))}
+            <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
+            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
+              {[5, 10, 25, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Detail Modal */}
+      {detail && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Transaction Details</h3>
+              <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
+              <div><span style={{ color: 'var(--muted)' }}>Type: </span><b style={{ color: '#fff' }}>{detail.type === 'sale' ? 'বিক্রি (Sale)' : 'ক্রয় (Purchase)'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Reference: </span><b style={{ color: '#fff' }}>{detail.ref}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Description: </span><b style={{ color: '#fff' }}>{detail.desc}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Amount: </span><b style={{ color: '#fff' }}>{fmtMoney(detail.amount, cur)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Payment / Supplier: </span><b style={{ color: '#fff' }}>{detail.pay}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Status: </span><b style={{ color: '#fff' }}>{detail.status}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Date: </span>{new Date(detail.date).toLocaleString('en-GB')}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

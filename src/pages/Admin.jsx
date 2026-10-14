@@ -514,7 +514,8 @@ function OrdersTab({ session }) {
 function LessonsTab() {
   const [courses, setCourses] = useState([])
   const [courseId, setCourseId] = useState('')
-  const [lessons, setLessons] = useState([])
+  const [allLessons, setAllLessons] = useState([])
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState({ title: '', description: '', video_url: '', duration_min: '', is_free_preview: false })
   const [editing, setEditing] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -524,98 +525,201 @@ function LessonsTab() {
       setCourses(data || [])
       if (data?.length && !courseId) setCourseId(String(data[0].id))
     })
+    loadAll()
   }, [])
 
-  const load = async (cid) => {
-    const { data } = await supabase.from('cashskillbd_lessons').select('*').eq('course_id', cid).order('sort_order')
-    setLessons(data || [])
+  const loadAll = async () => {
+    const { data } = await supabase.from('cashskillbd_lessons').select('*, cashskillbd_courses(title)').order('sort_order')
+    setAllLessons(data || [])
   }
-  useEffect(() => { if (courseId) load(courseId) }, [courseId])
 
   const reset = () => { setForm({ title: '', description: '', video_url: '', duration_min: '', is_free_preview: false }); setEditing(null) }
 
   const save = async (e) => {
     e.preventDefault()
     if (!form.title.trim()) return alert('লেসনের টাইটেল দিন')
+    if (!form.video_url.trim()) return alert('ভিডিও URL দিন')
+    if (!courseId) return alert('কোর্স নির্বাচন করুন')
+    const dur = Number(form.duration_min)
+    if (form.duration_min !== '' && (isNaN(dur) || dur < 0)) return alert('সঠিক duration দিন')
     setBusy(true)
     const row = {
       course_id: Number(courseId),
       title: form.title.trim(),
       description: form.description.trim(),
       video_url: form.video_url.trim(),
-      duration_min: Number(form.duration_min) || 0,
+      duration_min: dur || 0,
       is_free_preview: form.is_free_preview,
-      sort_order: editing ? editing.sort_order : lessons.length,
+      sort_order: editing ? editing.sort_order : allLessons.filter(l => String(l.course_id) === String(courseId)).length,
     }
     const { error } = editing
       ? await supabase.from('cashskillbd_lessons').update(row).eq('id', editing.id)
       : await supabase.from('cashskillbd_lessons').insert(row)
     if (error) alert('❌ ' + error.message)
-    else { reset(); load(courseId) }
+    else { reset(); loadAll() }
     setBusy(false)
   }
 
-  const del = async (id) => {
-    if (!confirm('লেসনটি ডিলিট করবেন?')) return
-    await supabase.from('cashskillbd_lessons').delete().eq('id', id)
-    load(courseId)
+  const del = async (l) => {
+    if (!confirm(`"${l.title}" লেসনটি ডিলিট করবেন?\n\nএটি মেম্বারদের অ্যাক্সেস ও কোর্স প্রোগ্রেসে প্রভাব ফেলতে পারে।`)) return
+    const { error } = await supabase.from('cashskillbd_lessons').delete().eq('id', l.id)
+    if (error) alert('❌ ' + error.message)
+    else loadAll()
   }
 
   const edit = (l) => {
     setEditing(l)
+    setCourseId(String(l.course_id))
     setForm({ title: l.title, description: l.description || '', video_url: l.video_url || '', duration_min: l.duration_min || '', is_free_preview: l.is_free_preview })
     window.scrollTo(0, 0)
   }
 
+  // Filter by selected course + search
+  const lessons = allLessons.filter(l => {
+    if (courseId && String(l.course_id) !== String(courseId)) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return l.title.toLowerCase().includes(q) || (l.cashskillbd_courses?.title || '').toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const courseOf = (cid) => courses.find(c => String(c.id) === String(cid))
+
+  const inp = {
+    width: '100%', height: 42, padding: '0 12px', background: 'rgba(255,255,255,.04)',
+    border: '1px solid rgba(255,255,255,.12)', borderRadius: 9, color: '#fff',
+    fontSize: '.9rem', outline: 'none', boxSizing: 'border-box',
+  }
+  const lbl = { display: 'block', fontSize: '.85rem', color: 'var(--silver)', marginBottom: 6, fontWeight: 500 }
+  const card = {
+    background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))',
+    border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 22,
+  }
+
   return (
     <div>
-      <div className="card form-card" style={{marginBottom:24}}>
-        <h3 style={{marginBottom:14}}>{editing ? '✏️ লেসন এডিট' : '➕ নতুন লেসন'}</h3>
-        <label>কোর্স</label>
-        <select value={courseId} onChange={e => setCourseId(e.target.value)}>
-          {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-        </select>
-        <form onSubmit={save}>
-          <label>টাইটেল *</label>
-          <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="যেমন: VPS সেটআপ — পার্ট ১" />
-          <label>ভিডিও URL * <small style={{color:'var(--muted)'}}>(YouTube / Facebook / Vimeo / mp4 লিংক পেস্ট করুন)</small></label>
-          <input value={form.video_url} onChange={e => setForm({...form, video_url: e.target.value})} placeholder="https://youtube.com/watch?v=..." />
-          <label>বর্ণনা</label>
-          <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="লেসনে যা যা শেখানো হবে" />
-          <div style={{display:'flex', gap:14, alignItems:'center', margin:'6px 0 14px', flexWrap:'wrap'}}>
-            <label style={{margin:0}}>⏱️ মিনিট: <input type="number" min="0" value={form.duration_min} onChange={e => setForm({...form, duration_min: e.target.value})} style={{width:80, margin:0}} /></label>
-            <label style={{margin:0, display:'flex', gap:8, alignItems:'center', cursor:'pointer'}}>
-              <input type="checkbox" checked={form.is_free_preview} onChange={e => setForm({...form, is_free_preview: e.target.checked})} style={{width:'auto', margin:0}} /> 🆓 ফ্রি প্রিভিউ
-            </label>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><ILessons size={24} /></div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Lessons</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Create, organize, and manage your course lessons.</p>
           </div>
-          <div style={{display:'flex', gap:10}}>
-            <button className="btn" disabled={busy}>{busy ? 'সেভ হচ্ছে…' : editing ? 'আপডেট করুন' : 'লেসন যোগ করুন'}</button>
-            {editing && <button type="button" className="btn btn-ghost" onClick={reset}>বাতিল</button>}
+        </div>
+        <div style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.03)', fontSize: '.85rem', color: 'var(--silver)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          Total Lessons <b style={{ color: '#fff' }}>{allLessons.length}</b>
+        </div>
+      </div>
+
+      {/* Add New Lesson Form */}
+      <div style={{ ...card, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18, color: '#ff6b6b' }}>+</div>
+          <div>
+            <div style={{ fontWeight: 700, color: '#fff', fontSize: '1.02rem' }}>{editing ? 'লেসন এডিট' : 'নতুন লেসন'}</div>
+            <div style={{ fontSize: '.8rem', color: 'var(--muted)' }}>কোর্সের জন্য নতুন লেসন তৈরি করুন।</div>
+          </div>
+        </div>
+        <form onSubmit={save}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={lbl}>কোর্স</label>
+              <select value={courseId} onChange={e => setCourseId(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
+                <option value="" style={{ background: '#1a0d0e' }}>সক্রিয় কোর্স নির্বাচন করুন</option>
+                {courses.map(c => <option key={c.id} value={c.id} style={{ background: '#1a0d0e' }}>{c.title}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>টাইটেল *</label>
+              <input style={inp} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="যেমন: VPS সেটআপ — পার্ট ১" />
+            </div>
+            <div>
+              <label style={lbl}>ভিডিও URL * <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(YouTube / Facebook / Vimeo / mp4 লিংক পেস্ট করুন)</span></label>
+              <input style={inp} value={form.video_url} onChange={e => setForm({ ...form, video_url: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
+            </div>
+            <div>
+              <label style={lbl}>বর্ণনা</label>
+              <textarea style={{ ...inp, height: 42, paddingTop: 10, resize: 'vertical', fontFamily: 'inherit' }} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="লেসনে যা যা শেখানো হবে" />
+            </div>
+            <div>
+              <label style={lbl}>মিনিট:</label>
+              <input style={inp} type="number" min="0" value={form.duration_min} onChange={e => setForm({ ...form, duration_min: e.target.value })} placeholder="যেমন: ৩০" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 8 }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', fontSize: '.9rem', color: '#fff' }}>
+                <input type="checkbox" checked={form.is_free_preview} onChange={e => setForm({ ...form, is_free_preview: e.target.checked })} style={{ width: 18, height: 18, accentColor: '#e8232a', cursor: 'pointer' }} />
+                <span style={{ padding: '2px 8px', borderRadius: 5, background: '#2ecc71', color: '#fff', fontSize: '.7rem', fontWeight: 700 }}>FREE</span>
+                ফ্রি প্রিভিউ (সবার জন্য উন্মুক্ত)
+              </label>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+            <button type="submit" disabled={busy} style={{ padding: '11px 24px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.92rem', cursor: busy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(232,35,42,.35)', opacity: busy ? 0.6 : 1 }}>
+              + {busy ? 'সেভ হচ্ছে…' : editing ? 'আপডেট করুন' : 'লেসন যোগ করুন'}
+            </button>
+            {editing && <button type="button" onClick={reset} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>বাতিল</button>}
           </div>
         </form>
       </div>
 
-      <div className="card" style={{padding:0, overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <div className="tbl-wrap"><table className="data-table">
-            <thead><tr><th>#</th><th>টাইটেল</th><th>ভিডিও</th><th>ফ্রি</th><th></th></tr></thead>
+      {/* Lessons Table */}
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>📖</div>
+            <div>
+              <div style={{ fontWeight: 700, color: '#fff' }}>লেসন তালিকা</div>
+              <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>সকল লেসন এখানে দেখানো হচ্ছে।</div>
+            </div>
+          </div>
+          <input placeholder="🔍 লেসন বা কোর্সের নাম দিয়ে খুঁজুন…" value={search} onChange={e => setSearch(e.target.value)}
+            style={{ padding: '9px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 9, color: '#fff', fontSize: '.85rem', outline: 'none', minWidth: 240 }} />
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.02)' }}>
+                {['#', 'লেসন টাইটেল', 'কোর্স', 'ভিডিও', 'মিনিট', 'অ্যাক্সেস', 'অ্যাকশন'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '13px 18px', fontSize: '.8rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
               {lessons.map((l, i) => (
-                <tr key={l.id}>
-                  <td>{i + 1}</td>
-                  <td><b>{l.title}</b>{l.duration_min ? <small style={{color:'var(--muted)'}}> ({l.duration_min} মিনিট)</small> : null}</td>
-                  <td>{l.video_url ? <a href={l.video_url} target="_blank" rel="noreferrer" style={{color:'#ff3b40'}}>🔗 দেখুন</a> : <span style={{color:'var(--muted)'}}>—</span>}</td>
-                  <td>{l.is_free_preview ? '🆓' : '🔒'}</td>
-                  <td style={{whiteSpace:'nowrap'}}>
-                    <button className="mini-btn" onClick={() => edit(l)}>✏️</button>{' '}
-                    <button className="mini-btn no" onClick={() => del(l.id)}>🗑️</button>
+                <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                  <td style={{ padding: '13px 18px', color: 'var(--muted)', fontSize: '.88rem' }}>{i + 1}</td>
+                  <td style={{ padding: '13px 18px', fontWeight: 600, color: '#fff', fontSize: '.92rem' }}>{l.title}</td>
+                  <td style={{ padding: '13px 18px', color: 'var(--silver)', fontSize: '.88rem' }}>{l.cashskillbd_courses?.title || courseOf(l.course_id)?.title || '—'}</td>
+                  <td style={{ padding: '13px 18px' }}>
+                    {l.video_url ? (
+                      <a href={l.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-grid', placeItems: 'center', width: 30, height: 30, borderRadius: 7, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', textDecoration: 'none', fontSize: 13 }}>▶</a>
+                    ) : <span style={{ color: 'var(--muted)' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '13px 18px', color: 'var(--silver)', fontSize: '.88rem' }}>{l.duration_min || 0}</td>
+                  <td style={{ padding: '13px 18px' }}>
+                    {l.is_free_preview ? (
+                      <span style={{ padding: '4px 12px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>ফ্রি</span>
+                    ) : (
+                      <span style={{ padding: '4px 12px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>পেইড</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '13px 18px', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => edit(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,184,77,.4)', background: 'rgba(255,184,77,.1)', color: '#f5b942', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>✏️</button>
+                    <button onClick={() => del(l)} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem' }}>🗑️</button>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table></div>
-          {lessons.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>এই কোর্সে এখনো লেসন নেই।</p>}
+          </table>
         </div>
+        {lessons.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>কোনো লেসন নেই</div>
+            <div style={{ fontSize: '.85rem' }}>এই কোর্সে এখনো লেসন যোগ করা হয়নি।</div>
+          </div>
+        )}
       </div>
     </div>
   )

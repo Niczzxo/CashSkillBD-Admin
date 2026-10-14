@@ -13,16 +13,33 @@ const ROLES = [
 const PERMISSIONS = [
   'Dashboard', 'Site Settings', 'Orders Management', 'Members Management',
   'Lessons & Courses', 'Seminar Management', 'Products & VPS',
-  'Reports & Analytics', 'Admin Management', 'Activity Logs',
-  'Payment Management', 'Support & Tickets',
+  'Payment Management', 'Reports & Analytics', 'Admin Management',
+  'Activity Logs', 'Support & Tickets', 'Inventory & Suppliers', 'Price History',
 ]
+
+const PERMISSION_META = {
+  'Dashboard': { icon: '🏠', desc: 'Access to the admin dashboard and overview statistics.', actions: ['View dashboard', 'View statistics', 'Access quick links', 'View system notifications'], category: 'Core Module', sensitive: false },
+  'Site Settings': { icon: '⚙️', desc: 'Manage site configuration, branding and content settings.', actions: ['View settings', 'Edit settings', 'Upload images', 'Manage SEO'], category: 'Core Module', sensitive: true },
+  'Orders Management': { icon: '🛒', desc: 'View and manage customer orders and payment verification.', actions: ['View orders', 'Verify payments', 'Reject orders', 'View order details'], category: 'Operations', sensitive: true },
+  'Members Management': { icon: '👥', desc: 'Manage member accounts, profiles and enrollments.', actions: ['View members', 'Edit members', 'View enrollments', 'Suspend members'], category: 'Operations', sensitive: true },
+  'Lessons & Courses': { icon: '📚', desc: 'Create and manage courses, lessons and learning content.', actions: ['View courses', 'Create lessons', 'Edit lessons', 'Delete lessons'], category: 'Content', sensitive: false },
+  'Seminar Management': { icon: '📅', desc: 'Manage seminar registrations and attendance.', actions: ['View registrations', 'Add registrations', 'Toggle check-in', 'Export list'], category: 'Content', sensitive: false },
+  'Products & VPS': { icon: '📦', desc: 'Manage products, VPS plans, IP services and numbers.', actions: ['View products', 'Create products', 'Edit products', 'Delete products'], category: 'Operations', sensitive: true },
+  'Payment Management': { icon: '💳', desc: 'Manage payment methods, dollar rates and transactions.', actions: ['View transactions', 'Update rates', 'Record transactions', 'Process refunds'], category: 'Sensitive', sensitive: true },
+  'Reports & Analytics': { icon: '📊', desc: 'View sales reports, analytics and business insights.', actions: ['View reports', 'Export reports', 'View charts', 'Filter by date'], category: 'Core Module', sensitive: false },
+  'Admin Management': { icon: '👑', desc: 'Manage admin accounts, roles and access control.', actions: ['View admins', 'Create admins', 'Edit roles', 'Deactivate admins'], category: 'Sensitive', sensitive: true },
+  'Activity Logs': { icon: '📋', desc: 'View audit logs and admin activity history.', actions: ['View logs', 'Filter logs', 'Export logs'], category: 'Sensitive', sensitive: true },
+  'Support & Tickets': { icon: '🎧', desc: 'Handle support tickets and customer inquiries.', actions: ['View tickets', 'Reply to tickets', 'Update status', 'View inquiries'], category: 'Operations', sensitive: false },
+  'Inventory & Suppliers': { icon: '🏭', desc: 'Manage inventory stock, suppliers and purchases.', actions: ['View inventory', 'Adjust stock', 'Manage suppliers', 'Record purchases'], category: 'Operations', sensitive: true },
+  'Price History': { icon: '🏷', desc: 'View price change history across all products.', actions: ['View history', 'Filter by product', 'Export history'], category: 'Operations', sensitive: false },
+}
 
 const ROLE_PERMISSIONS = {
   admin: PERMISSIONS,
-  manager: ['Dashboard', 'Site Settings', 'Orders Management', 'Members Management', 'Lessons & Courses', 'Seminar Management', 'Products & VPS', 'Reports & Analytics', 'Support & Tickets'],
+  manager: ['Dashboard', 'Site Settings', 'Orders Management', 'Members Management', 'Lessons & Courses', 'Seminar Management', 'Products & VPS', 'Reports & Analytics', 'Support & Tickets', 'Inventory & Suppliers', 'Price History'],
   support: ['Dashboard', 'Members Management', 'Support & Tickets', 'Activity Logs'],
   content: ['Dashboard', 'Lessons & Courses', 'Seminar Management'],
-  payment: ['Dashboard', 'Orders Management', 'Payment Management', 'Reports & Analytics'],
+  payment: ['Dashboard', 'Orders Management', 'Payment Management', 'Reports & Analytics', 'Price History'],
 }
 
 const roleOf = (dbRole) => ROLES.find(r => r.id === dbRole) || ROLES[2]
@@ -532,30 +549,341 @@ export function AdminManagement({ session, role }) {
 }
 
 /* ── Roles & Permissions page ── */
-export function RolesPermissions() {
+export function RolesPermissions({ session }) {
+  const [customRoles, setCustomRoles] = useState([])
+  const [matrix, setMatrix] = useState({ ...ROLE_PERMISSIONS })
+  const [savedMatrix, setSavedMatrix] = useState({ ...ROLE_PERMISSIONS })
+  const [selectedRole, setSelectedRole] = useState('admin')
+  const [selectedPerm, setSelectedPerm] = useState('Dashboard')
+  const [newRole, setNewRole] = useState({ name: '', desc: '', status: 'Active', perms: ['Dashboard'] })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [confirmSave, setConfirmSave] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const j = await adminApi(session, 'role.list', {})
+      if (Array.isArray(j.custom_roles)) setCustomRoles(j.custom_roles)
+      if (j.role_permissions && typeof j.role_permissions === 'object') {
+        const merged = { ...ROLE_PERMISSIONS, ...j.role_permissions }
+        merged.admin = PERMISSIONS // Super Admin always keeps everything
+        setMatrix(merged)
+        setSavedMatrix(merged)
+      }
+    } catch (e) { /* use defaults */ }
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  const allRoles = [
+    ...ROLES.map(r => ({ id: r.id, label: r.label, desc: r.desc, color: r.color, bg: r.bg, border: r.border, icon: r.icon, active: true, custom: false })),
+    ...customRoles.map(cr => ({ id: cr.id, label: cr.label, desc: cr.desc, color: cr.color || '#8e44ad', bg: 'rgba(142,68,173,.12)', border: 'rgba(142,68,173,.4)', icon: '🔑', active: cr.active !== false, custom: true })),
+  ]
+
+  const totalPerms = PERMISSIONS.length
+  const activeRoles = allRoles.filter(r => r.active).length
+  const restrictedAccess = PERMISSIONS.filter(p => PERMISSION_META[p]?.sensitive).length
+  const dirty = JSON.stringify(matrix) !== JSON.stringify(savedMatrix)
+
+  const togglePerm = (roleId, perm) => {
+    if (roleId === 'admin') return // Super Admin locked
+    setMatrix(m => {
+      const cur = m[roleId] || []
+      const next = cur.includes(perm) ? cur.filter(x => x !== perm) : [...cur, perm]
+      return { ...m, [roleId]: next }
+    })
+  }
+
+  const saveChanges = async () => {
+    setConfirmSave(false)
+    setSaving(true)
+    try {
+      await adminApi(session, 'role.save', { role_permissions: matrix })
+      setSavedMatrix({ ...matrix })
+      alert('✅ Permissions saved.')
+    } catch (e) { alert('❌ ' + e.message) }
+    setSaving(false)
+  }
+
+  const createRole = async (e) => {
+    e.preventDefault()
+    const name = newRole.name.trim()
+    const desc = newRole.desc.trim()
+    if (!name) return alert('Role Name দিন')
+    if (!desc) return alert('Description দিন')
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    if (allRoles.some(r => r.id === id || r.label.toLowerCase() === name.toLowerCase())) return alert('এই নামে role ইতিমধ্যে আছে।')
+    setCreating(true)
+    try {
+      const next = [...customRoles, { id, label: name, desc, color: '#8e44ad', active: newRole.status === 'Active' }]
+      await adminApi(session, 'role.save', { custom_roles: next, role_permissions: { ...matrix, [id]: newRole.perms } })
+      setCustomRoles(next)
+      setMatrix(m => ({ ...m, [id]: newRole.perms }))
+      setSavedMatrix(m => ({ ...m, [id]: newRole.perms }))
+      setNewRole({ name: '', desc: '', status: 'Active', perms: ['Dashboard'] })
+      alert(`✅ Role "${name}" created.`)
+    } catch (err) { alert('❌ ' + err.message) }
+    setCreating(false)
+  }
+
+  const stats = [
+    { label: 'Total Roles', value: allRoles.length, desc: 'System roles', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🛡' },
+    { label: 'Total Permissions', value: totalPerms, desc: 'Available permissions', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '👥' },
+    { label: 'Active Roles', value: activeRoles, desc: 'Currently enabled', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '👤' },
+    { label: 'Restricted Access', value: restrictedAccess, desc: 'Sensitive permissions', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '🔒' },
+  ]
+
+  const inp = {
+    width: '100%', height: 42, padding: '0 12px', background: 'rgba(255,255,255,.04)',
+    border: '1px solid rgba(255,255,255,.12)', borderRadius: 9, color: '#fff',
+    fontSize: '.9rem', outline: 'none', boxSizing: 'border-box',
+  }
+  const lbl = { display: 'block', fontSize: '.85rem', color: 'var(--silver)', marginBottom: 6, fontWeight: 500 }
+  const card = {
+    background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))',
+    border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20,
+  }
+
+  const selRole = allRoles.find(r => r.id === selectedRole) || allRoles[0]
+  const selPermMeta = PERMISSION_META[selectedPerm] || {}
+
   return (
     <div>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22 }}>🛡</div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Roles & Permissions</h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Predefined roles and their access levels. Role changes are enforced by the server API.</p>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>⚙️</div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Roles & Permissions</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage predefined roles and control access to different sections of the admin panel.</p>
+          </div>
         </div>
+        <button onClick={() => document.getElementById('create-role-form')?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+          + Create New Role
+        </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-        {ROLES.map(r => (
-          <div key={r.id} style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: `1px solid ${r.border}`, borderRadius: 14, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: r.bg, display: 'grid', placeItems: 'center', fontSize: 18 }}>{r.icon}</div>
-              <div style={{ fontWeight: 700, color: r.color, fontSize: '1.02rem' }}>{r.label}</div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 20 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ flex: 1, minWidth: 180, background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: `1px solid ${s.color}55`, borderRadius: 14, padding: 18, display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, background: s.bg, display: 'grid', placeItems: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{s.label}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{s.value}</div>
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{s.desc}</div>
             </div>
-            <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: '0 0 12px' }}>{r.desc}</p>
-            <div style={{ fontSize: '.82rem', color: 'var(--silver)' }}>
-              <b>Permissions:</b> {(ROLE_PERMISSIONS[r.id] || []).join(', ')}
-            </div>
+            <span style={{ position: 'absolute', top: 14, right: 14, color: s.color, fontSize: 16 }}>→</span>
           </div>
         ))}
       </div>
+
+      {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+      {!loading && (
+        <>
+          {/* Roles + Create Role */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)', gap: 16, alignItems: 'start', marginBottom: 16 }}>
+            {/* Available Roles */}
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>👥</div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#fff' }}>Available Roles</div>
+                  <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Manage existing roles or create a new role with custom permissions.</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                {allRoles.map(r => {
+                  const access = r.id === 'admin' ? 'All pages, all actions' : r.id === 'support' ? 'Tickets, Inquiries, Members (view)' : 'Assigned sections only'
+                  const isSel = selectedRole === r.id
+                  return (
+                    <button key={r.id} onClick={() => setSelectedRole(r.id)} style={{ textAlign: 'left', background: isSel ? 'rgba(232,35,42,.12)' : 'rgba(255,255,255,.03)', border: isSel ? '1px solid rgba(232,35,42,.6)' : '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: 14, cursor: 'pointer', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: r.bg, display: 'grid', placeItems: 'center', fontSize: 16, flexShrink: 0 }}>{r.icon}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, color: r.color, fontSize: '.92rem' }}>{r.label}</div>
+                        </div>
+                        <span style={{ padding: '3px 9px', borderRadius: 7, fontSize: '.7rem', fontWeight: 600, background: r.active ? 'rgba(46,204,113,.15)' : 'rgba(255,255,255,.08)', color: r.active ? '#2ecc71' : 'var(--muted)', border: `1px solid ${r.active ? 'rgba(46,204,113,.4)' : 'rgba(255,255,255,.15)'}` }}>{r.active ? 'Active' : 'Inactive'}</span>
+                      </div>
+                      <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: 8 }}>{r.desc}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '.74rem', color: 'var(--silver)' }}>🔑 Access: {access}</span>
+                        <span style={{ color: 'var(--muted)' }}>›</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Create New Role */}
+            <div id="create-role-form" style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>+</div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#fff' }}>Create New Role</div>
+                  <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Create a custom role with specific permissions.</div>
+                </div>
+              </div>
+              <form onSubmit={createRole} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={lbl}>Role Name *</label>
+                  <input style={inp} value={newRole.name} onChange={e => setNewRole({ ...newRole, name: e.target.value })} placeholder="Enter role name" />
+                </div>
+                <div>
+                  <label style={lbl}>Description *</label>
+                  <textarea style={{ ...inp, height: 70, padding: '10px 12px', resize: 'vertical' }} value={newRole.desc} onChange={e => setNewRole({ ...newRole, desc: e.target.value })} placeholder="Enter role description" />
+                </div>
+                <div>
+                  <label style={lbl}>Status *</label>
+                  <select value={newRole.status} onChange={e => setNewRole({ ...newRole, status: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
+                    <option value="Active" style={{ background: '#1a0d0e' }}>Active</option>
+                    <option value="Inactive" style={{ background: '#1a0d0e' }}>Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Permissions</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+                    {PERMISSIONS.map(p => (
+                      <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: '.84rem', color: '#fff' }}>
+                        <input type="checkbox" checked={newRole.perms.includes(p)} onChange={e => setNewRole({ ...newRole, perms: e.target.checked ? [...newRole.perms, p] : newRole.perms.filter(x => x !== p) })} style={{ width: 16, height: 16, accentColor: '#e8232a', cursor: 'pointer' }} />
+                        {p}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <button type="submit" disabled={creating} style={{ padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1 }}>
+                  {creating ? 'Creating…' : '+ Create Role'}
+                </button>
+                <button type="button" onClick={() => setNewRole({ name: '', desc: '', status: 'Active', perms: ['Dashboard'] })} style={{ padding: '11px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Reset</button>
+              </form>
+            </div>
+          </div>
+
+          {/* Permissions Matrix + Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)', gap: 16, alignItems: 'start' }}>
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>🛡</div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#fff' }}>Permissions Matrix</div>
+                    <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Configure which permissions each role can access.</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {dirty && <span style={{ fontSize: '.78rem', color: '#f5b942' }}>● Unsaved changes</span>}
+                  <button onClick={() => setConfirmSave(true)} disabled={saving || !dirty} style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: dirty ? 'linear-gradient(135deg, #e8232a, #b01020)' : 'rgba(255,255,255,.08)', color: '#fff', fontWeight: 600, cursor: dirty ? 'pointer' : 'not-allowed', fontSize: '.85rem', opacity: dirty ? 1 : 0.5 }}>
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                      <th style={{ textAlign: 'left', padding: '11px 12px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '11px 12px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>Permission / Module</th>
+                      {allRoles.map(r => (
+                        <th key={r.id} style={{ textAlign: 'center', padding: '11px 8px', fontSize: '.74rem', fontWeight: 600, color: r.color, whiteSpace: 'nowrap' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{r.icon} {r.label}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PERMISSIONS.map((p, pi) => (
+                      <tr key={p} onClick={() => setSelectedPerm(p)} style={{ borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', background: selectedPerm === p ? 'rgba(232,35,42,.08)' : 'transparent' }}>
+                        <td style={{ padding: '11px 12px', color: 'var(--muted)', fontSize: '.82rem' }}>{pi + 1}</td>
+                        <td style={{ padding: '11px 12px', fontSize: '.86rem', color: '#fff', fontWeight: 500, whiteSpace: 'nowrap' }}>{PERMISSION_META[p]?.icon} {p}</td>
+                        {allRoles.map(r => {
+                          const on = (matrix[r.id] || []).includes(p)
+                          const locked = r.id === 'admin'
+                          return (
+                            <td key={r.id} style={{ padding: '11px 8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                              <button
+                                title={locked ? 'Super Admin permissions are locked' : `${on ? 'Disable' : 'Enable'} ${p} for ${r.label}`}
+                                onClick={() => togglePerm(r.id, p)}
+                                disabled={locked}
+                                style={{
+                                  width: 40, height: 22, borderRadius: 11, border: 'none', cursor: locked ? 'not-allowed' : 'pointer',
+                                  background: on ? r.color : 'rgba(255,255,255,.12)', position: 'relative', transition: 'background .15s', opacity: locked ? 0.85 : 1,
+                                }}
+                              >
+                                <span style={{
+                                  position: 'absolute', top: 3, left: on ? 20 : 3, width: 16, height: 16,
+                                  borderRadius: '50%', background: '#fff', transition: 'left .15s',
+                                }} />
+                              </button>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ fontSize: '.75rem', color: 'var(--muted)', margin: '12px 0 0' }}>Super Admin permissions are locked — all enabled. Changes are saved to the server only after clicking Save Changes.</p>
+            </div>
+
+            {/* Permission Details */}
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18 }}>ℹ️</div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#fff' }}>Permission Details</div>
+                  <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Information about the selected permission.</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: 'rgba(255,255,255,.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,.06)', marginBottom: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 18, flexShrink: 0 }}>{selPermMeta.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: '#fff', fontSize: '.95rem' }}>{selectedPerm}</div>
+                  <div style={{ fontSize: '.74rem', color: 'var(--muted)' }}>{selPermMeta.desc}</div>
+                </div>
+                <span style={{ padding: '4px 9px', borderRadius: 7, fontSize: '.68rem', fontWeight: 600, background: selPermMeta.sensitive ? 'rgba(245,185,66,.15)' : 'rgba(46,204,113,.15)', color: selPermMeta.sensitive ? '#f5b942' : '#2ecc71', border: `1px solid ${selPermMeta.sensitive ? 'rgba(245,185,66,.4)' : 'rgba(46,204,113,.4)'}` }}>{selPermMeta.category}</span>
+              </div>
+              <div style={{ fontSize: '.85rem', fontWeight: 600, color: '#fff', marginBottom: 8 }}>Included Actions</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
+                {(selPermMeta.actions || []).map(a => (
+                  <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.85rem', color: 'var(--silver)' }}>
+                    <span style={{ color: '#2ecc71' }}>✓</span> {a}
+                  </div>
+                ))}
+              </div>
+              {selPermMeta.sensitive && (
+                <div style={{ padding: '11px 12px', background: 'rgba(245,185,66,.08)', border: '1px solid rgba(245,185,66,.3)', borderRadius: 10, fontSize: '.8rem', color: '#f5b942' }}>
+                  ⚠️ This is a sensitive permission. Grant it only to trusted administrators.
+                </div>
+              )}
+              {!selPermMeta.sensitive && (
+                <div style={{ padding: '11px 12px', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, fontSize: '.8rem', color: 'var(--muted)' }}>
+                  These permissions control access to the {selectedPerm.toLowerCase()} and general system overview.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Save Confirmation */}
+          {confirmSave && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setConfirmSave(false)}>
+              <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 440, width: '100%' }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ margin: '0 0 10px', color: '#fff' }}>Save Permission Changes?</h3>
+                <p style={{ color: 'var(--muted)', fontSize: '.88rem', margin: '0 0 18px' }}>
+                  This will update role permissions for all admins with these roles. Sensitive permissions (Admin Management, Payment Management, Site Settings) will be affected. Continue?
+                </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={saveChanges} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Yes, Save</button>
+                  <button onClick={() => setConfirmSave(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

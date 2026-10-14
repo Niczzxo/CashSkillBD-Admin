@@ -159,7 +159,7 @@ export function Admin() {
         <div className="mnav-links">
           {GROUPS.flatMap(g => g.items).map((it, i) => (
             <a key={it.id} onClick={() => goSec(it.id)}  className={sec === it.id ? 'active' : ''}>
-              <span>{it.label}</span>
+              <span>{tr(lang, it.key)}</span>
               <span className="mnav-arrow">→</span>
             </a>
           ))}

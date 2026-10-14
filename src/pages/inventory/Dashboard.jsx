@@ -142,10 +142,10 @@ export function Dashboard({ session, goSec }) {
               >
                 {(() => {
                   const opts = []
-                  const now = new Date()
-                  for (let i = 0; i < 12; i++) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+                  const year = new Date().getFullYear()
+                  for (let m = 0; m < 12; m++) {
+                    const d = new Date(year, m, 1)
+                    const val = `${year}-${String(m+1).padStart(2,'0')}`
                     const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                     opts.push(<option key={val} value={val} style={{background:'#1a0d0e'}}>{label}</option>)
                   }

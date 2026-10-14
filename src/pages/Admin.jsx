@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { navigate, link } from '../lib/router.js'
 import { fmt } from '../config.js'
+import { IDash, IGear, IOrders, ILessons, IMembers, ITeam, IReviews, ITickets, IInquiries, ISeminar, IProducts, IVps, IPayments, ISupport, IBox, IClock, IChart } from '../components/icons.jsx'
 
 async function adminApi(session, action, payload = {}) {
   const r = await fetch('/api/admin', {
@@ -39,33 +40,33 @@ const GROUPS = [
   {
     title: null,
     items: [
-      { id: 'dashboard', key: 'dashboard' },
-      { id: 'site-settings', key: 'site_settings' },
-      { id: 'orders', key: 'orders' },
-      { id: 'lessons', key: 'lessons' },
-      { id: 'members', key: 'members' },
-      { id: 'team', key: 'team' },
-      { id: 'reviews', key: 'reviews' },
-      { id: 'tickets', key: 'tickets' },
-      { id: 'inquiries', key: 'inquiries' },
-      { id: 'seminar-regs', key: 'seminar_regs' },
+      { id: 'dashboard', key: 'dashboard', icon: <IDash /> },
+      { id: 'site-settings', key: 'site_settings', icon: <IGear /> },
+      { id: 'orders', key: 'orders', icon: <IOrders /> },
+      { id: 'lessons', key: 'lessons', icon: <ILessons /> },
+      { id: 'members', key: 'members', icon: <IMembers /> },
+      { id: 'team', key: 'team', icon: <ITeam /> },
+      { id: 'reviews', key: 'reviews', icon: <IReviews /> },
+      { id: 'tickets', key: 'tickets', icon: <ITickets /> },
+      { id: 'inquiries', key: 'inquiries', icon: <IInquiries /> },
+      { id: 'seminar-regs', key: 'seminar_regs', icon: <ISeminar /> },
     ],
   },
   {
     titleKey: 'products_mgmt',
     items: [
-      { id: 'products', key: 'products' },
-      { id: 'ip', key: 'services_ip' },
-      { id: 'vps', key: 'services_vps' },
-      { id: 'vps-plans', key: 'vps_plans' },
-      { id: 'number', key: 'services_number' },
-      { id: 'dollar', key: 'dollar' },
-      { id: 'sales-orders', key: 'sales_orders' },
-      { id: 'inventory', key: 'inventory' },
-      { id: 'suppliers', key: 'suppliers' },
-      { id: 'reports', key: 'reports' },
-      { id: 'price-history', key: 'price_history' },
-      { id: 'audit-logs', key: 'audit_logs' },
+      { id: 'products', key: 'products', icon: <IProducts /> },
+      { id: 'ip', key: 'services_ip', icon: <IProducts /> },
+      { id: 'vps', key: 'services_vps', icon: <IVps /> },
+      { id: 'vps-plans', key: 'vps_plans', icon: <IVps /> },
+      { id: 'number', key: 'services_number', icon: <IProducts /> },
+      { id: 'dollar', key: 'dollar', icon: <IPayments /> },
+      { id: 'sales-orders', key: 'sales_orders', icon: <IOrders /> },
+      { id: 'inventory', key: 'inventory', icon: <IBox /> },
+      { id: 'suppliers', key: 'suppliers', icon: <IMembers /> },
+      { id: 'reports', key: 'reports', icon: <IChart /> },
+      { id: 'price-history', key: 'price_history', icon: <IClock /> },
+      { id: 'audit-logs', key: 'audit_logs', icon: <IOrders /> },
     ],
   },
 ]
@@ -103,7 +104,7 @@ export function Admin() {
 
   const renderSec = () => {
     switch (sec) {
-      case 'dashboard': return <Dashboard session={session} />
+      case 'dashboard': return <Dashboard session={session} goSec={goSec} />
       case 'site-settings': return <SiteSettings session={session} role={role} />
       case 'orders': return <OrdersTab session={session} />
       case 'lessons': return <LessonsTab />
@@ -180,7 +181,8 @@ export function Admin() {
                   {g.titleKey && <div className="grp-title">{tr(lang, g.titleKey)}</div>}
                   {g.items.map(it => (
                     <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
-                      {tr(lang, it.key)}
+                      <span className="admin-item-icon">{it.icon}</span>
+                      <span>{tr(lang, it.key)}</span>
                     </button>
                   ))}
                 </div>

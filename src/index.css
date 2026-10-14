@@ -348,6 +348,9 @@ footer { border-top: 1px solid var(--border); padding: 54px 0 30px; background: 
   font-size: .92rem; font-weight: 600; cursor: pointer; margin-bottom: 2px;
   transition: all .2s ease; white-space: nowrap; }
 .admin-item:hover { background: rgba(255,255,255,.06); transform: translateX(2px); }
+.admin-item-icon { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; }
+.admin-item-icon svg { width: 20px; height: 20px; }
+.admin-item.active .admin-item-icon svg path { stroke: #fff; }
 .admin-item.active { background: linear-gradient(135deg, var(--red-bright), var(--red-deep));
   color: #fff; border-color: transparent; box-shadow: 0 4px 16px var(--red-glow); }
 .admin-main { flex: 1; min-width: 0; }
@@ -443,6 +446,7 @@ select.inp option { background: #1a0d0e; }
   .admin-layout { flex-direction: column; padding: 16px; }
   .admin-side { display: none; }
   .dash-panels { grid-template-columns: 1fr; }
+  .dash-mid { grid-template-columns: 1fr !important; }
   .admin-nav-inner { padding: 10px 16px; }
   .hide-m { display: none !important; }
 }

@@ -28,6 +28,8 @@ const cardStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: 14,
+  breakInside: 'avoid',
+  marginBottom: 18,
 }
 
 const cardHeadStyle = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }
@@ -181,7 +183,7 @@ export function SiteSettings({ session, role }) {
       </div>
 
       {/* Settings Grid — 2 columns on desktop */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 18, alignItems: 'start' }}>
+      <div style={{ columns: '2 420px', columnGap: 18 }}>
 
         {/* ── Basic Information ── */}
         <div style={cardStyle}>

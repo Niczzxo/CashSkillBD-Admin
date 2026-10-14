@@ -10,7 +10,10 @@ import { ADMIN_LOGO } from '../lib/adminLogo.js'
 
 // Strip leading emoji from translation labels (sidebar uses SVG icons instead)
 const stripEmoji = (s) => String(s || '').replace(/^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}\u{2640}\u{2642}\u{2690}-\u{269B}\u{2700}-\u{27BF}]+\s*/u, '').trim()
-import { IDash, IGear, IOrders, ILessons, IMembers, ITeam, IReviews, ITickets, IInquiries, ISeminar, IProducts, IVps, IPayments, ISupport, IBox, IClock, IChart, IMoney, IWarn, IUsers, IArrowR } from '../components/icons.jsx'
+import { IDash, IGear, IOrders, ILessons, IMembers, IReviews, ISeminar, IProducts, IVps, IPayments, IBox, IClock, IChart, IMoney } from '../components/icons.jsx'
+import { GlobalSearch } from '../components/GlobalSearch.jsx'
+import { Notifications } from '../components/Notifications.jsx'
+import { ProfileMenu } from '../components/ProfileMenu.jsx'
 
 async function adminApi(session, action, payload = {}) {
   const r = await fetch('/api/admin', {
@@ -50,45 +53,55 @@ import { SiteSettings } from './inventory/SiteSettings.jsx'
 import { Tickets, Inquiries, SeminarRegs } from './inventory/Support.jsx'
 
 const GROUPS = [
+  { items: [{ id: 'dashboard', key: 'dashboard', icon: <IDash /> }] },
+  { items: [{ id: 'lessons', key: 'lessons', icon: <ILessons /> }] },
+  { items: [{ id: 'course-enrollments', key: 'course_enrollments', icon: <ILessons /> }] },
+  { items: [{ id: 'document-verification', key: 'document_verification', icon: <ILessons /> }] },
   {
-    title: null,
+    titleKey: 'grp_products_services', collapsible: true,
     items: [
-      { id: 'dashboard', key: 'dashboard', icon: <IDash /> },
-      { id: 'site-settings', key: 'site_settings', icon: <IGear /> },
+      { id: 'products', key: 'products', icon: <IProducts /> },
+      { id: 'vps-plans', key: 'vps_plans', icon: <IVps /> },
+      { id: 'vps', key: 'services_vps', icon: <IVps /> },
+      { id: 'ip', key: 'services_ip', icon: <IProducts /> },
+      { id: 'number', key: 'services_number', icon: <IProducts /> },
+      { id: 'inventory', key: 'inventory', icon: <IBox /> },
+      { id: 'suppliers', key: 'suppliers', icon: <IMembers /> },
+    ],
+  },
+  {
+    titleKey: 'grp_orders_customers', collapsible: true,
+    items: [
       { id: 'orders', key: 'orders', icon: <IOrders /> },
-      { id: 'lessons', key: 'lessons', icon: <ILessons /> },
+      { id: 'sales-orders', key: 'sales_orders', icon: <IOrders /> },
       { id: 'members', key: 'members', icon: <IMembers /> },
+      { id: 'course-customers', key: 'course_customers', icon: <ILessons /> },
+      { id: 'service-customers', key: 'service_customers', icon: <IProducts /> },
+    ],
+  },
+  {
+    titleKey: 'grp_finance_reports', collapsible: true,
+    items: [
+      { id: 'dollar', key: 'dollar', icon: <IPayments /> },
+      { id: 'reports', key: 'reports', icon: <IChart /> },
+      { id: 'price-history', key: 'price_history', icon: <IClock /> },
+    ],
+  },
+  {
+    titleKey: 'grp_support', collapsible: true,
+    items: [
       { id: 'reviews', key: 'reviews', icon: <IReviews /> },
       { id: 'seminar-regs', key: 'seminar_regs', icon: <ISeminar /> },
     ],
   },
   {
-    titleKey: 'products_mgmt',
+    titleKey: 'grp_settings_admin', collapsible: true,
     items: [
-      { id: 'products', key: 'products', icon: <IProducts /> },
-      { id: 'ip', key: 'services_ip', icon: <IProducts /> },
-      { id: 'vps', key: 'services_vps', icon: <IVps /> },
-      { id: 'vps-plans', key: 'vps_plans', icon: <IVps /> },
-      { id: 'course-customers', key: 'course_customers', icon: <ILessons /> },
-      { id: 'course-enrollments', key: 'course_enrollments', icon: <ILessons /> },
-      { id: 'document-verification', key: 'document_verification', icon: <ILessons /> },
-      { id: 'service-customers', key: 'service_customers', icon: <IProducts /> },
-      { id: 'number', key: 'services_number', icon: <IProducts /> },
-      { id: 'dollar', key: 'dollar', icon: <IPayments /> },
-      { id: 'sales-orders', key: 'sales_orders', icon: <IOrders /> },
-      { id: 'inventory', key: 'inventory', icon: <IBox /> },
-      { id: 'suppliers', key: 'suppliers', icon: <IMembers /> },
-      { id: 'reports', key: 'reports', icon: <IChart /> },
-      { id: 'price-history', key: 'price_history', icon: <IClock /> },
-      { id: 'audit-logs', key: 'audit_logs', icon: <IOrders /> },
-    ],
-  },
-  {
-    titleKey: 'admin_mgmt',
-    items: [
+      { id: 'site-settings', key: 'site_settings', icon: <IGear /> },
       { id: 'admins', key: 'admins', icon: <IMembers /> },
       { id: 'roles', key: 'roles_permissions', icon: <IGear /> },
       { id: 'activity-logs', key: 'activity_logs', icon: <IOrders /> },
+      { id: 'audit-logs', key: 'audit_logs', icon: <IOrders /> },
     ],
   },
 ]
@@ -107,6 +120,30 @@ export function Admin() {
   const { lang } = useLang()
   const [sec, setSec] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchFocusKey, setSearchFocusKey] = useState(0)
+  const [sideCollapsed, setSideCollapsed] = useState(false)
+  const [mobileSearch, setMobileSearch] = useState(false)
+  const [openGroups, setOpenGroups] = useState({})
+
+  // Ctrl+K / Cmd+K opens global search; Escape closes it (handled in GlobalSearch)
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+        setSearchFocusKey(k => k + 1)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Keep the group containing the active section expanded
+  useEffect(() => {
+    const gi = GROUPS.findIndex(g => g.items.some(it => it.id === sec))
+    if (gi >= 0 && GROUPS[gi].collapsible) setOpenGroups(prev => ({ ...prev, [gi]: true }))
+  }, [sec])
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -163,23 +200,45 @@ export function Admin() {
     <>
       <nav className="admin-nav">
         <div className="wrap admin-nav-inner">
-          <div className="admin-brand">
-            <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{width:44, height:44, objectFit:'contain', borderRadius:10}} onError={(e)=>{e.target.style.display='none'}} />
-            <div>
-              <div className="admin-brand-name">CashSkillBD <span>Admin</span></div>
-              <div className="admin-brand-tag">MANAGEMENT PANEL</div>
-            </div>
-          </div>
-          <div className="admin-nav-right">
-            <span className="role-badge">{role}</span>
-            <LanguageSelector />
-            <button className="btn btn-sm btn-ghost hide-m" onClick={signOut}>{tr(lang, 'logout')}</button>
-            <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={tr(lang, 'menu')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button className={`hamburger ${menuOpen ? 'open' : ''}`} onClick={() => {
+              if (window.innerWidth < 920) setMenuOpen(!menuOpen)
+              else setSideCollapsed(c => !c)
+            }} aria-label={tr(lang, 'menu')} style={{ display: 'inline-flex' }}>
               <span /><span /><span />
             </button>
+            <button onClick={() => goSec('dashboard')} aria-label="CashSkillBD Admin" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, minWidth: 0 }}>
+              <img src={ADMIN_LOGO} alt="CashSkillBD Admin" style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 10, flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none' }} />
+              <span style={{ textAlign: 'left', minWidth: 0 }} className="hide-m">
+                <span className="admin-brand-name" style={{ display: 'block', whiteSpace: 'nowrap' }}>CashSkillBD <span>Admin</span></span>
+                <span className="admin-brand-tag" style={{ display: 'block' }}>MANAGEMENT PANEL</span>
+              </span>
+            </button>
+          </div>
+          <div className="admin-search-desktop" style={{ flex: 1, maxWidth: 560, margin: '0 8px' }}>
+            <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} goSec={goSec} autoFocusKey={searchFocusKey} />
+          </div>
+          <div className="admin-nav-right">
+            <span className="role-badge hide-m" style={{ background: 'linear-gradient(135deg,#FF303A,#A80F20)', color: '#fff', borderColor: 'transparent' }}>{role === 'admin' ? tr(lang, 'nav_admin_badge') : (role || '').toUpperCase()}</span>
+            <span className="hide-m"><LanguageSelector /></span>
+            <button className="admin-search-mob-btn" onClick={() => setMobileSearch(true)} aria-label={tr(lang, 'nav_search_ph')} style={{ width: 42, height: 42, borderRadius: 11, border: '1px solid rgba(58,23,27,.9)', background: 'rgba(255,255,255,.04)', color: '#fff', cursor: 'pointer', placeItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+            </button>
+            <Notifications session={session} goSec={goSec} />
+            <ProfileMenu session={session} role={role} goSec={goSec} signOut={signOut} />
           </div>
         </div>
       </nav>
+      {mobileSearch && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 150, padding: 12 }} onClick={() => setMobileSearch(false)}>
+          <div style={{ background: '#100708', border: '1px solid #3A171B', borderRadius: 14, padding: 12 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1 }}><GlobalSearch open={true} onOpenChange={(o) => { if (!o) setMobileSearch(false) }} goSec={(id) => { setMobileSearch(false); goSec(id) }} autoFocusKey={searchFocusKey} /></div>
+              <button onClick={() => setMobileSearch(false)} aria-label={tr(lang, 'nav_close')} style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(58,23,27,.9)', background: 'rgba(255,255,255,.04)', color: '#fff', cursor: 'pointer', fontSize: 18 }}>×</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className={`mnav-overlay ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <aside className={`mnav ${menuOpen ? 'show' : ''}`}>
         <div className="mnav-head">
@@ -187,11 +246,21 @@ export function Admin() {
           <button className="mnav-x" onClick={() => setMenuOpen(false)}>×</button>
         </div>
         <div className="mnav-links">
-          {GROUPS.flatMap(g => g.items).map((it, i) => (
-            <a key={it.id} onClick={() => goSec(it.id)}  className={sec === it.id ? 'active' : ''}>
-              <span>{tr(lang, it.key)}</span>
-              <span className="mnav-arrow">→</span>
-            </a>
+          {GROUPS.map((g, gi) => (
+            <div key={gi}>
+              {g.collapsible && (
+                <button onClick={() => setOpenGroups(prev => ({ ...prev, [gi]: !prev[gi] }))} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', color: 'var(--muted)', fontSize: '.72rem', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer' }}>
+                  {tr(lang, g.titleKey)}
+                  <span style={{ fontSize: '.8rem', transform: openGroups[gi] ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
+                </button>
+              )}
+              {(g.collapsible ? !!openGroups[gi] : true) && g.items.map(it => (
+                <a key={it.id} onClick={() => goSec(it.id)} className={sec === it.id ? 'active' : ''}>
+                  <span>{tr(lang, it.key)}</span>
+                  <span className="mnav-arrow">→</span>
+                </a>
+              ))}
+            </div>
           ))}
         </div>
         <div className="mnav-foot">
@@ -202,18 +271,31 @@ export function Admin() {
       </aside>
       <section className="admin-sec" style={{minHeight:'90svh'}}>
         <div className="wrap">
-          <div className="admin-layout">
+          <div className={`admin-layout ${sideCollapsed ? 'side-collapsed' : ''}`}>
             <aside className="admin-side">
               {GROUPS.map((g, gi) => (
                 <div key={gi}>
-                  {gi > 0 && <div className="grp-div" />}
-                  {g.titleKey && <div className="grp-title">{tr(lang, g.titleKey)}</div>}
-                  {g.items.map(it => (
-                    <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
-                      <span className="admin-item-icon">{it.icon}</span>
-                      <span>{stripEmoji(tr(lang, it.key))}</span>
-                    </button>
-                  ))}
+                  {g.collapsible ? (
+                    <>
+                      <button onClick={() => setOpenGroups(prev => ({ ...prev, [gi]: !prev[gi] }))} className="grp-head" aria-expanded={!!openGroups[gi]}>
+                        <span>{tr(lang, g.titleKey)}</span>
+                        <span className="grp-chev" style={{ transform: openGroups[gi] ? 'rotate(90deg)' : 'none' }}>›</span>
+                      </button>
+                      {openGroups[gi] && g.items.map(it => (
+                        <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
+                          <span className="admin-item-icon">{it.icon}</span>
+                          <span>{stripEmoji(tr(lang, it.key))}</span>
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    g.items.map(it => (
+                      <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
+                        <span className="admin-item-icon">{it.icon}</span>
+                        <span>{stripEmoji(tr(lang, it.key))}</span>
+                      </button>
+                    ))
+                  )}
                 </div>
               ))}
             </aside>

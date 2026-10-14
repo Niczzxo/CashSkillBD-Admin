@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 import { supabase } from '../../lib/supabase.js'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -7,6 +9,7 @@ const monthAgo = () => new Date(Date.now() - 29 * 86400000).toISOString().slice(
 const fmtMoney = (v, cur) => `${cur === 'USD' ? '$' : '৳'} ${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 
 export function Reports({ session, role }) {
+  const { lang } = useLang()
   const [from, setFrom] = useState(monthAgo)
   const [to, setTo] = useState(todayStr)
   const [cur, setCur] = useState('BDT')
@@ -40,7 +43,7 @@ export function Reports({ session, role }) {
       // Recent customers (members, newest first)
       const { data: profs } = await supabase.from('cashskillbd_profiles').select('id,full_name,email,avatar_url,created_at').eq('role', 'member').order('created_at', { ascending: false }).limit(5)
       setCustomers(profs || [])
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(e.message) }
     setLoading(false)
   }
   useEffect(() => { run() }, [])
@@ -105,7 +108,7 @@ export function Reports({ session, role }) {
 
   // ── Recent transactions (sales + purchases) ──
   const transactions = [
-    ...rangeOrders.map(o => ({ id: `ord-${o.id}`, date: o.created_at, type: 'sale', ref: o.order_no || `#CSB${o.id}`, desc: o.customer_name || 'Order', amount: Number(o.grand_total || 0), pay: o.payment_method || '—', status: o.status, order: o })),
+    ...rangeOrders.map(o => ({ id: `ord-${o.id}`, date: o.created_at, type: 'sale', ref: o.order_no || `#CSB${o.id}`, desc: o.customer_name || tr(lang, 'reports_order_fallback'), amount: Number(o.grand_total || 0), pay: o.payment_method || '—', status: o.status, order: o })),
     ...rangePurchases.map(p => ({ id: `pur-${p.id}`, date: p.purchased_at || p.created_at, type: 'purchase', ref: `#PUR${p.id}`, desc: p.cashskillbd_products?.name || `Product #${p.product_id}`, amount: Number(p.total_cost || 0), pay: p.cashskillbd_suppliers?.name || '—', status: 'completed', purchase: p })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
@@ -128,7 +131,7 @@ export function Reports({ session, role }) {
 
   // ── Donut SVG ──
   const donutColors = { completed: '#2ecc71', processing: '#4da3ff', pending: '#f5b942', cancelled: '#ff6b6b' }
-  const donutLabels = { completed: 'সম্পন্ন', processing: 'প্রক্রিয়াধীন', pending: 'অপেক্ষমান', cancelled: 'বাতিল' }
+  const donutLabels = { completed: tr(lang, 'reports_status_completed'), processing: tr(lang, 'reports_status_processing'), pending: tr(lang, 'reports_status_pending'), cancelled: tr(lang, 'reports_status_cancelled') }
   let donutAcc = 0
   const donutSegments = Object.entries(statusCounts).map(([k, v]) => {
     const pct = totalStatusOrders > 0 ? v / totalStatusOrders : 0
@@ -149,11 +152,11 @@ export function Reports({ session, role }) {
   }
 
   const stats = [
-    { label: 'মোট বিক্রি', value: fmtMoney(totalSales, cur), desc: 'গত সময়ের তুলনায়', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🛒', trend: null },
-    { label: 'মোট অর্ডার', value: totalOrders.toLocaleString(), desc: 'গত সময়ের তুলনায়', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🧾', trend: null },
-    { label: 'নতুন কাস্টমার', value: newCustomers.toLocaleString(), desc: 'গত সময়ের তুলনায়', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '👥', trend: null },
-    { label: 'মোট ক্রয়', value: fmtMoney(totalPurchaseAmt, cur), desc: 'গত সময়ের তুলনায়', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📦', trend: null },
-    { label: 'মোট মুনাফা', value: fmtMoney(totalProfit, cur), desc: 'গত সময়ের তুলনায়', color: '#c084fc', bg: 'rgba(192,132,252,.15)', icon: '💰', trend: null },
+    { label: tr(lang, 'reports_total_sales'), value: fmtMoney(totalSales, cur), desc: tr(lang, 'reports_vs_prev'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '🛒', trend: null },
+    { label: tr(lang, 'reports_total_orders'), value: totalOrders.toLocaleString(), desc: tr(lang, 'reports_vs_prev'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🧾', trend: null },
+    { label: tr(lang, 'reports_new_customers'), value: newCustomers.toLocaleString(), desc: tr(lang, 'reports_vs_prev'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '👥', trend: null },
+    { label: tr(lang, 'reports_total_purchases'), value: fmtMoney(totalPurchaseAmt, cur), desc: tr(lang, 'reports_vs_prev'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📦', trend: null },
+    { label: tr(lang, 'reports_total_profit'), value: fmtMoney(totalProfit, cur), desc: tr(lang, 'reports_vs_prev'), color: '#c084fc', bg: 'rgba(192,132,252,.15)', icon: '💰', trend: null },
   ]
 
   const avatarColors = ['#e8232a', '#4da3ff', '#2ecc71', '#f5b942', '#e84393', '#8e44ad', '#00cec9']
@@ -168,14 +171,14 @@ export function Reports({ session, role }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📊</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Reports</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>View detailed reports and analytics for sales, purchases, customers, and inventory.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'reports_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'reports_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9, padding: '6px 10px' }}>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
-            <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>to</span>
+            <span style={{ color: 'var(--muted)', fontSize: '.82rem' }}>{tr(lang, 'reports_to')}</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '.85rem', colorScheme: 'dark' }} />
           </div>
           <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,.03)', borderRadius: 9, padding: 3 }}>
@@ -183,7 +186,7 @@ export function Reports({ session, role }) {
             <button onClick={() => setCur('USD')} style={{ padding: '7px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '.82rem', background: cur === 'USD' ? 'rgba(255,255,255,.1)' : 'transparent', color: '#fff' }}>$ USD</button>
           </div>
           <button onClick={run} disabled={loading} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-            {loading ? 'Generating…' : 'Generate Report'}
+            {loading ? tr(lang, 'reports_generating') : tr(lang, 'reports_generate')}
           </button>
         </div>
       </div>
@@ -207,19 +210,19 @@ export function Reports({ session, role }) {
         {/* Sales/Purchase Chart */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20, gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-            <b style={{ color: '#fff' }}>বিক্রয় ও ক্রয়ের প্রবণতা</b>
+            <b style={{ color: '#fff' }}>{tr(lang, 'reports_chart_title')}</b>
             <select value={period} onChange={e => setPeriod(e.target.value)} style={{ padding: '6px 10px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 8, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-              <option value="daily" style={{ background: '#1a0d0e' }}>প্রতি দিন</option>
-              <option value="weekly" style={{ background: '#1a0d0e' }}>প্রতি সপ্তাহ</option>
-              <option value="monthly" style={{ background: '#1a0d0e' }}>প্রতি মাস</option>
+              <option value="daily" style={{ background: '#1a0d0e' }}>{tr(lang, 'reports_daily')}</option>
+              <option value="weekly" style={{ background: '#1a0d0e' }}>{tr(lang, 'reports_weekly')}</option>
+              <option value="monthly" style={{ background: '#1a0d0e' }}>{tr(lang, 'reports_monthly')}</option>
             </select>
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: '.82rem' }}>
-            <span style={{ color: '#ff6b6b' }}>■ বিক্রয় (Sales)</span>
-            <span style={{ color: '#4da3ff' }}>■ ক্রয় (Purchase)</span>
+            <span style={{ color: '#ff6b6b' }}>■ {tr(lang, 'reports_sales_legend')}</span>
+            <span style={{ color: '#4da3ff' }}>■ {tr(lang, 'reports_purchase_legend')}</span>
           </div>
           {chartData.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>এই সময়ে কোনো data নেই</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'reports_no_chart_data')}</div>
           ) : (
             <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
               {[0, 0.25, 0.5, 0.75, 1].map(f => (
@@ -240,7 +243,7 @@ export function Reports({ session, role }) {
 
         {/* Donut */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 20 }}>
-          <b style={{ color: '#fff', display: 'block', marginBottom: 14 }}>অর্ডার স্ট্যাটাস (এই সময়ে)</b>
+          <b style={{ color: '#fff', display: 'block', marginBottom: 14 }}>{tr(lang, 'reports_order_status')}</b>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
               <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%' }}>
@@ -252,7 +255,7 @@ export function Reports({ session, role }) {
               <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
                 <div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>{totalStatusOrders}</div>
-                  <div style={{ fontSize: '.68rem', color: 'var(--muted)' }}>মোট অর্ডার</div>
+                  <div style={{ fontSize: '.68rem', color: 'var(--muted)' }}>{tr(lang, 'reports_total_orders')}</div>
                 </div>
               </div>
             </div>
@@ -273,26 +276,26 @@ export function Reports({ session, role }) {
         {/* Top Products */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <b style={{ color: '#fff', fontSize: '.95rem' }}>টপ পণ্য (বিক্রিত)</b>
-            <button onClick={() => goSec('products')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>{tr(lang, 'reports_top_products')}</b>
+            <button onClick={() => goSec('products')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>{tr(lang, 'reports_view_all')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             {prodSales.slice(0, 5).map((p, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '.85rem' }}>
                 <span style={{ color: 'var(--muted)', width: 16, textAlign: 'center' }}>{i + 1}</span>
-                <span style={{ color: '#fff', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || `Product #${p.product_id}`}</span>
+                <span style={{ color: '#fff', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name || `${tr(lang, 'reports_product')} #${p.product_id}`}</span>
                 <b style={{ color: '#fff' }}>{p.qty}</b>
               </div>
             ))}
-            {prodSales.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো বিক্রি নেই</div>}
+            {prodSales.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{tr(lang, 'reports_no_sales')}</div>}
           </div>
         </div>
 
         {/* Sales by Payment Method */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <b style={{ color: '#fff', fontSize: '.95rem' }}>পেমেন্ট মাধ্যম অনুযায়ী বিক্রি</b>
-            <button onClick={() => goSec('orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>{tr(lang, 'reports_sales_by_payment')}</b>
+            <button onClick={() => goSec('orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>{tr(lang, 'reports_view_all')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             {payMethods.map(([m, amt], i) => (
@@ -301,29 +304,29 @@ export function Reports({ session, role }) {
                 <b style={{ color: '#fff' }}>{fmtMoney(amt, cur)}</b>
               </div>
             ))}
-            {payMethods.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো payment data নেই</div>}
+            {payMethods.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{tr(lang, 'reports_no_payment_data')}</div>}
           </div>
         </div>
 
         {/* Inventory Overview */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <b style={{ color: '#fff', fontSize: '.95rem' }}>স্টক অবস্থা</b>
-            <button onClick={() => goSec('inventory')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>{tr(lang, 'reports_stock_status')}</b>
+            <button onClick={() => goSec('inventory')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>{tr(lang, 'reports_view_all')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.85rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>পর্যাপ্ত স্টক</span><b style={{ color: '#2ecc71' }}>{invIn}</b></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>স্বল্প স্টক</span><b style={{ color: '#f5b942' }}>{invLow}</b></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>স্টক শেষ</span><b style={{ color: '#ff6b6b' }}>{invOut}</b></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>মোট পণ্য</span><b style={{ color: '#fff' }}>{products.length}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>{tr(lang, 'reports_stock_in')}</span><b style={{ color: '#2ecc71' }}>{invIn}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>{tr(lang, 'reports_stock_low')}</span><b style={{ color: '#f5b942' }}>{invLow}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>{tr(lang, 'reports_stock_out')}</span><b style={{ color: '#ff6b6b' }}>{invOut}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--silver)' }}>{tr(lang, 'reports_total_products')}</span><b style={{ color: '#fff' }}>{products.length}</b></div>
           </div>
         </div>
 
         {/* Recent Customers */}
         <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <b style={{ color: '#fff', fontSize: '.95rem' }}>নতুন কাস্টমার (এই সময়ে)</b>
-            <button onClick={() => goSec('members')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>View All</button>
+            <b style={{ color: '#fff', fontSize: '.95rem' }}>{tr(lang, 'reports_new_customers_period')}</b>
+            <button onClick={() => goSec('members')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.78rem' }}>{tr(lang, 'reports_view_all')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             {customers.slice(0, 5).map((c, i) => (
@@ -337,7 +340,7 @@ export function Reports({ session, role }) {
                 <span style={{ color: 'var(--muted)', fontSize: '.78rem' }}>{new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
               </div>
             ))}
-            {customers.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>কোনো নতুন কাস্টমার নেই</div>}
+            {customers.length === 0 && <div style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{tr(lang, 'reports_no_new_customers')}</div>}
           </div>
         </div>
       </div>
@@ -345,14 +348,14 @@ export function Reports({ session, role }) {
       {/* Recent Transactions */}
       <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.35)', borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <b style={{ color: '#fff', fontSize: '1.02rem' }}>সাম্প্রতিক লেনদেন</b>
-          <button onClick={() => goSec('sales-orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.82rem' }}>View All</button>
+          <b style={{ color: '#fff', fontSize: '1.02rem' }}>{tr(lang, 'reports_recent_txns')}</b>
+          <button onClick={() => goSec('sales-orders')} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '.82rem' }}>{tr(lang, 'reports_view_all')}</button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {['#', 'তারিখ', 'ধরন', 'রেফারেন্স', 'বিবরণ', 'পরিমাণ', 'পেমেন্ট মাধ্যম', 'স্ট্যাটাস', 'অ্যাকশন'].map(h => (
+                {['#', tr(lang, 'reports_th_date'), tr(lang, 'reports_th_type'), tr(lang, 'reports_th_reference'), tr(lang, 'reports_th_desc'), tr(lang, 'reports_th_amount'), tr(lang, 'reports_th_payment'), tr(lang, 'reports_th_status'), tr(lang, 'reports_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -364,9 +367,9 @@ export function Reports({ session, role }) {
                   <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(t.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                   <td style={{ padding: '12px 14px' }}>
                     {t.type === 'sale' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>বিক্রি</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>{tr(lang, 'reports_sale')}</span>
                     ) : (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>ক্রয়</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>{tr(lang, 'reports_purchase')}</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 14px', fontSize: '.82rem', color: 'var(--silver)', fontFamily: 'monospace' }}>{t.ref}</td>
@@ -375,17 +378,17 @@ export function Reports({ session, role }) {
                   <td style={{ padding: '12px 14px', fontSize: '.85rem', color: 'var(--silver)' }}>{t.pay}</td>
                   <td style={{ padding: '12px 14px' }}>
                     {t.status === 'delivered' || t.status === 'completed' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>সম্পন্ন</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>{tr(lang, 'reports_status_completed')}</span>
                     ) : t.status === 'confirmed' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(77,163,255,.15)', color: '#4da3ff', border: '1px solid rgba(77,163,255,.4)' }}>প্রক্রিয়াধীন</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(77,163,255,.15)', color: '#4da3ff', border: '1px solid rgba(77,163,255,.4)' }}>{tr(lang, 'reports_status_processing')}</span>
                     ) : t.status === 'pending' ? (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>অপেক্ষমান</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>{tr(lang, 'reports_status_pending')}</span>
                     ) : (
-                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>বাতিল</span>
+                      <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.74rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>{tr(lang, 'reports_status_cancelled')}</span>
                     )}
                   </td>
                   <td style={{ padding: '12px 14px' }}>
-                    <button title="View" onClick={() => setDetail(t)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>👁</button>
+                    <button title={tr(lang, 'reports_view')} onClick={() => setDetail(t)} style={{ padding: '6px 8px', borderRadius: 7, border: '1px solid rgba(232,35,42,.4)', background: 'rgba(232,35,42,.1)', color: '#ff6b6b', cursor: 'pointer' }}>👁</button>
                   </td>
                 </tr>
               ))}
@@ -394,13 +397,13 @@ export function Reports({ session, role }) {
         </div>
         {pageItems.length === 0 && !loading && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>কোনো লেনদেন নেই</div>
-            <div style={{ fontSize: '.85rem' }}>এই সময়ে কোনো লেনদেন হয়নি।</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'reports_empty_title')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'reports_empty_desc')}</div>
           </div>
         )}
-        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'reports_loading')}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {transactions.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, transactions.length)} of {transactions.length.toLocaleString()} transactions</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'reports_showing')} {transactions.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'reports_showing_to')} {Math.min(curPage * pageSize, transactions.length)} {tr(lang, 'reports_showing_of')} {transactions.length.toLocaleString()} {tr(lang, 'reports_transactions')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - curPage) <= 1).map((p, idx, arr) => (
@@ -411,7 +414,7 @@ export function Reports({ session, role }) {
             ))}
             <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-              {[5, 10, 25, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+              {[5, 10, 25, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / {tr(lang, 'reports_per_page')}</option>)}
             </select>
           </div>
         </div>
@@ -422,17 +425,17 @@ export function Reports({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Transaction Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'reports_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Type: </span><b style={{ color: '#fff' }}>{detail.type === 'sale' ? 'বিক্রি (Sale)' : 'ক্রয় (Purchase)'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Reference: </span><b style={{ color: '#fff' }}>{detail.ref}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Description: </span><b style={{ color: '#fff' }}>{detail.desc}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Amount: </span><b style={{ color: '#fff' }}>{fmtMoney(detail.amount, cur)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Payment / Supplier: </span><b style={{ color: '#fff' }}>{detail.pay}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Status: </span><b style={{ color: '#fff' }}>{detail.status}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Date: </span>{new Date(detail.date).toLocaleString('en-GB')}</div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_type')}</span><b style={{ color: '#fff' }}>{detail.type === 'sale' ? tr(lang, 'reports_detail_sale') : tr(lang, 'reports_detail_purchase')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_reference')}</span><b style={{ color: '#fff' }}>{detail.ref}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_desc')}</span><b style={{ color: '#fff' }}>{detail.desc}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_amount')}</span><b style={{ color: '#fff' }}>{fmtMoney(detail.amount, cur)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_payment')}</span><b style={{ color: '#fff' }}>{detail.pay}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_status')}</span><b style={{ color: '#fff' }}>{detail.status}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'reports_detail_date')}</span>{new Date(detail.date).toLocaleString('en-GB')}</div>
             </div>
           </div>
         </div>

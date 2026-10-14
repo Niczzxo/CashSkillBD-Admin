@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { manageApi } from '../../lib/manageApi.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
 const blankForm = {
   sku: '', name: '', description: '', category: 'general', product_type: 'physical',
@@ -7,17 +9,18 @@ const blankForm = {
   stock_qty: '0', low_stock_at: '5', image_url: '', service_duration_days: '',
 }
 
-const CATEGORY_STYLES = {
-  vps: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: 'VPS' },
-  ip: { bg: 'rgba(77,163,255,.12)', color: '#4da3ff', border: 'rgba(77,163,255,.4)', label: 'IP' },
-  dollar: { bg: 'rgba(46,204,113,.12)', color: '#2ecc71', border: 'rgba(46,204,113,.4)', label: 'Dollar' },
-  number: { bg: 'rgba(245,185,66,.12)', color: '#f5b942', border: 'rgba(245,185,66,.4)', label: 'Number' },
-  course: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: 'Course' },
-  account: { bg: 'rgba(232,35,42,.12)', color: '#ff6b6b', border: 'rgba(232,35,42,.4)', label: 'Account' },
-  service: { bg: 'rgba(0,206,201,.12)', color: '#00cec9', border: 'rgba(0,206,201,.4)', label: 'Service' },
-}
 
 export function Products({ session, role }) {
+  const { lang } = useLang()
+  const CATEGORY_STYLES = {
+    vps: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: tr(lang, 'prod_cat_vps') },
+    ip: { bg: 'rgba(77,163,255,.12)', color: '#4da3ff', border: 'rgba(77,163,255,.4)', label: tr(lang, 'prod_cat_ip') },
+    dollar: { bg: 'rgba(46,204,113,.12)', color: '#2ecc71', border: 'rgba(46,204,113,.4)', label: tr(lang, 'prod_cat_dollar') },
+    number: { bg: 'rgba(245,185,66,.12)', color: '#f5b942', border: 'rgba(245,185,66,.4)', label: tr(lang, 'prod_cat_number') },
+    course: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: tr(lang, 'prod_cat_course') },
+    account: { bg: 'rgba(232,35,42,.12)', color: '#ff6b6b', border: 'rgba(232,35,42,.4)', label: tr(lang, 'prod_cat_account') },
+    service: { bg: 'rgba(0,206,201,.12)', color: '#00cec9', border: 'rgba(0,206,201,.4)', label: tr(lang, 'prod_cat_service') },
+  }
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -40,7 +43,7 @@ export function Products({ session, role }) {
     try {
       const j = await manageApi(session, 'product.list', { limit: 500, offset: 0 })
       setItems(j.items || [])
-    } catch (e) { alert('❌ ' + e.message) }
+    } catch (e) { alert(tr(lang, 'prod_error_prefix') + e.message) }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -79,7 +82,7 @@ export function Products({ session, role }) {
   const categories = [...new Set(items.map(p => p.category || 'general'))]
 
   const fmt = (p) => `${p.currency === 'USD' ? '$' : '৳'}${Number(p.selling_price || 0).toLocaleString('en-IN')}`
-  const catStyle = (cat) => CATEGORY_STYLES[(cat || '').toLowerCase()] || { bg: 'rgba(255,255,255,.06)', color: 'var(--silver)', border: 'rgba(255,255,255,.15)', label: cat || 'General' }
+  const catStyle = (cat) => CATEGORY_STYLES[(cat || '').toLowerCase()] || { bg: 'rgba(255,255,255,.06)', color: 'var(--silver)', border: 'rgba(255,255,255,.15)', label: cat || tr(lang, 'prod_cat_general') }
 
   const toggleStatus = async (p) => {
     setBusy(p.id)
@@ -91,7 +94,7 @@ export function Products({ session, role }) {
   }
 
   const del = async (p) => {
-    if (!confirm(`"${p.name}" product delete করবেন?`)) return
+    if (!confirm(tr(lang, 'prod_delete_confirm_start') + p.name + tr(lang, 'prod_delete_confirm_end'))) return
     setBusy(p.id)
     try {
       await manageApi(session, 'product.delete', { id: p.id })
@@ -104,7 +107,7 @@ export function Products({ session, role }) {
     setBusy(p.id)
     try {
       await manageApi(session, 'product.create', {
-        sku: (p.sku || '') + '-COPY', name: p.name + ' (Copy)', description: p.description,
+        sku: (p.sku || '') + '-COPY', name: p.name + ' ' + tr(lang, 'prod_copy_suffix'), description: p.description,
         category: p.category, product_type: p.product_type, selling_price: p.selling_price,
         currency: p.currency, stock_qty: p.stock_qty, low_stock_at: p.low_stock_at,
         image_url: p.image_url, purchase_cost: p.purchase_cost,
@@ -116,7 +119,7 @@ export function Products({ session, role }) {
 
   const save = async (e) => {
     e.preventDefault()
-    if (!form.name.trim()) return alert('Product name দিন')
+    if (!form.name.trim()) return alert(tr(lang, 'prod_alert_name_required'))
     setBusy('save')
     try {
       if (editing) {
@@ -126,7 +129,7 @@ export function Products({ session, role }) {
       }
       setShowForm(false); setEditing(null); setForm(blankForm)
       load()
-    } catch (ex) { alert('❌ ' + ex.message) }
+    } catch (ex) { alert(tr(lang, 'prod_error_prefix') + ex.message) }
     setBusy(null)
   }
 
@@ -179,10 +182,10 @@ export function Products({ session, role }) {
   const lbl = { display: 'block', fontSize: '.82rem', color: 'var(--silver)', marginBottom: 5, fontWeight: 500 }
 
   const stats = [
-    { label: 'Total Products', value: total.toLocaleString(), desc: 'All available products', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '📦' },
-    { label: 'Active Products', value: active.toLocaleString(), desc: 'Currently published', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🏷' },
-    { label: 'Out of Stock', value: outOfStock.toLocaleString(), desc: 'Products unavailable', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
-    { label: 'Inactive Products', value: inactive.toLocaleString(), desc: 'Draft or unpublished', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📁' },
+    { label: tr(lang, 'prod_total_products'), value: total.toLocaleString(), desc: tr(lang, 'prod_total_products_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '📦' },
+    { label: tr(lang, 'prod_active_products'), value: active.toLocaleString(), desc: tr(lang, 'prod_active_products_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '🏷' },
+    { label: tr(lang, 'prod_out_of_stock'), value: outOfStock.toLocaleString(), desc: tr(lang, 'prod_out_of_stock_desc'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '📦' },
+    { label: tr(lang, 'prod_inactive_products'), value: inactive.toLocaleString(), desc: tr(lang, 'prod_inactive_products_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '📁' },
   ]
 
   return (
@@ -192,21 +195,21 @@ export function Products({ session, role }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📦</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Product Management</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage all products, create new products, update stock, pricing and categories.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'prod_title')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'prod_subtitle')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
           <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>
-            ↓ Export ▾
+            ↓ {tr(lang, 'prod_export')} ▾
           </button>
           {exportOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 140, marginTop: 6, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 10, minWidth: 150 }}>
-              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Export as CSV</button>
+              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'prod_export_csv')}</button>
             </div>
           )}
           <button onClick={() => { setEditing(null); setForm(blankForm); setShowForm(true) }} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-            + Add Product
+            + {tr(lang, 'prod_add_product')}
           </button>
         </div>
       </div>
@@ -228,38 +231,38 @@ export function Products({ session, role }) {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
-        <input placeholder="Search by name, SKU, category or description…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'prod_search_placeholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={catF} onChange={e => { setCatF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Categories</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_all_categories')}</option>
           {categories.map(c => <option key={c} value={c} style={{ background: '#1a0d0e' }}>{c}</option>)}
         </select>
         <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
-          <option value="active" style={{ background: '#1a0d0e' }}>Active</option>
-          <option value="inactive" style={{ background: '#1a0d0e' }}>Inactive</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_all_statuses')}</option>
+          <option value="active" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_active')}</option>
+          <option value="inactive" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_inactive')}</option>
         </select>
         <select value={stockF} onChange={e => { setStockF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Stock Status</option>
-          <option value="in" style={{ background: '#1a0d0e' }}>In Stock</option>
-          <option value="low" style={{ background: '#1a0d0e' }}>Low Stock</option>
-          <option value="out" style={{ background: '#1a0d0e' }}>Out of Stock</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_all_stock_status')}</option>
+          <option value="in" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_in_stock')}</option>
+          <option value="low" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_low_stock')}</option>
+          <option value="out" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_out_of_stock')}</option>
         </select>
         <select value={dateF} onChange={e => { setDateF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Time</option>
-          <option value="today" style={{ background: '#1a0d0e' }}>Today</option>
-          <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
-          <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_all_time')}</option>
+          <option value="today" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_today')}</option>
+          <option value="week" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_last_7_days')}</option>
+          <option value="month" style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_last_30_days')}</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'prod_clear_filters')}</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'prod_refresh')}</button>
       </div>
 
       {/* Bulk actions */}
       {selected.size > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '10px 14px', background: 'rgba(232,35,42,.1)', border: '1px solid rgba(232,35,42,.3)', borderRadius: 10 }}>
-          <span style={{ fontSize: '.85rem', color: '#fff' }}>{selected.size} selected</span>
-          <button onClick={() => { setSelected(new Set()); }} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>Clear</button>
+          <span style={{ fontSize: '.85rem', color: '#fff' }}>{selected.size} {tr(lang, 'prod_selected')}</span>
+          <button onClick={() => { setSelected(new Set()); }} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.82rem' }}>{tr(lang, 'prod_clear')}</button>
         </div>
       )}
 
@@ -271,7 +274,7 @@ export function Products({ session, role }) {
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)' }}>#</th>
                 <th style={{ padding: '12px 8px' }}><input type="checkbox" checked={pageItems.length > 0 && selected.size === pageItems.length} onChange={toggleSelectAll} style={{ accentColor: '#e8232a', cursor: 'pointer' }} /></th>
-                {['Image', 'Product Name', 'SKU', 'Category', 'Price', 'Stock', 'Status', 'Created Date', 'Actions'].map(h => (
+                {[tr(lang, 'prod_th_image'), tr(lang, 'prod_th_product_name'), tr(lang, 'prod_th_sku'), tr(lang, 'prod_th_category'), tr(lang, 'prod_th_price'), tr(lang, 'prod_th_stock'), tr(lang, 'prod_th_status'), tr(lang, 'prod_th_created_date'), tr(lang, 'prod_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -305,15 +308,15 @@ export function Products({ session, role }) {
                     <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.9rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(p)}</td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {stock <= 0 ? (
-                        <span style={{ color: '#ff6b6b', fontSize: '.85rem', fontWeight: 600 }}>● 0 in stock</span>
+                        <span style={{ color: '#ff6b6b', fontSize: '.85rem', fontWeight: 600 }}>● 0 {tr(lang, 'prod_in_stock_suffix')}</span>
                       ) : stock <= lowAt ? (
-                        <span style={{ color: '#f5b942', fontSize: '.85rem', fontWeight: 600 }}>● {stock} in stock</span>
+                        <span style={{ color: '#f5b942', fontSize: '.85rem', fontWeight: 600 }}>● {stock} {tr(lang, 'prod_in_stock_suffix')}</span>
                       ) : (
                         <span style={{ color: '#2ecc71', fontSize: '.85rem', fontWeight: 600 }}>● {stock} in stock</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <button onClick={() => toggleStatus(p)} disabled={busy === p.id} title={p.status === 'active' ? 'Deactivate' : 'Activate'} style={{
+                      <button onClick={() => toggleStatus(p)} disabled={busy === p.id} title={p.status === 'active' ? tr(lang, 'prod_deactivate') : tr(lang, 'prod_activate')} style={{
                         width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
                         background: p.status === 'active' ? '#2ecc71' : '#555',
                         position: 'relative', transition: 'background .2s',
@@ -324,17 +327,17 @@ export function Products({ session, role }) {
                           transition: 'left .2s', boxShadow: '0 1px 4px rgba(0,0,0,.3)',
                         }} />
                       </button>
-                      <span style={{ marginLeft: 8, fontSize: '.8rem', color: p.status === 'active' ? '#2ecc71' : 'var(--muted)', fontWeight: 600 }}>{p.status === 'active' ? 'Active' : 'Inactive'}</span>
+                      <span style={{ marginLeft: 8, fontSize: '.8rem', color: p.status === 'active' ? '#2ecc71' : 'var(--muted)', fontWeight: 600 }}>{p.status === 'active' ? tr(lang, 'prod_active') : tr(lang, 'prod_inactive')}</span>
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: '.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                       {new Date(p.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}<br />
                       <span style={{ fontSize: '.72rem' }}>{new Date(p.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <button title="View" onClick={() => setDetail(p)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
-                      <button title="Edit" onClick={() => openEdit(p)} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
-                      <button title="Duplicate" onClick={() => duplicate(p)} disabled={busy === p.id} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>⧉</button>
-                      <button title="Delete" onClick={() => del(p)} disabled={busy === p.id} style={actionBtn('rgba(232,35,42,.1)', 'rgba(232,35,42,.4)', '#ff6b6b')}>🗑</button>
+                      <button title={tr(lang, 'prod_view')} onClick={() => setDetail(p)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
+                      <button title={tr(lang, 'prod_edit')} onClick={() => openEdit(p)} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
+                      <button title={tr(lang, 'prod_duplicate')} onClick={() => duplicate(p)} disabled={busy === p.id} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>⧉</button>
+                      <button title={tr(lang, 'prod_delete')} onClick={() => del(p)} disabled={busy === p.id} style={actionBtn('rgba(232,35,42,.1)', 'rgba(232,35,42,.4)', '#ff6b6b')}>🗑</button>
                     </td>
                   </tr>
                 )
@@ -344,13 +347,13 @@ export function Products({ session, role }) {
         </div>
         {pageItems.length === 0 && !loading && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>No products found</div>
-            <div style={{ fontSize: '.85rem' }}>No products match your filters. Add a new product to get started.</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'prod_no_products')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'prod_no_products_desc')}</div>
           </div>
         )}
-        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Loading…</div>}
+        {loading && <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>{tr(lang, 'prod_loading')}</div>}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} to {Math.min(curPage * pageSize, list.length)} of {list.length.toLocaleString()} products</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'prod_showing')} {list.length === 0 ? 0 : (curPage - 1) * pageSize + 1} {tr(lang, 'prod_to')} {Math.min(curPage * pageSize, list.length)} {tr(lang, 'prod_of')} {list.length.toLocaleString()} {tr(lang, 'prod_products')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -363,7 +366,7 @@ export function Products({ session, role }) {
             <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
             <button onClick={() => setPage(totalPages)} disabled={curPage >= totalPages} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>»</button>
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} style={{ marginLeft: 8, padding: '6px 8px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 7, color: '#fff', fontSize: '.82rem', cursor: 'pointer' }}>
-              {[10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} / page</option>)}
+              {[10, 20, 50].map(n => <option key={n} value={n} style={{ background: '#1a0d0e' }}>{n} {tr(lang, 'prod_per_page')}</option>)}
             </select>
           </div>
         </div>
@@ -374,18 +377,18 @@ export function Products({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Product Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'prod_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             {detail.image_url && <img src={detail.image_url} alt="" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 12, marginBottom: 14 }} />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Name: </span><b style={{ color: '#fff' }}>{detail.name}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Description: </span><span style={{ color: 'var(--silver)' }}>{detail.description || '—'}</span></div>
-              <div><span style={{ color: 'var(--muted)' }}>SKU: </span><b style={{ color: '#fff' }}>{detail.sku || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Category: </span><b style={{ color: '#fff' }}>{detail.category}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Price: </span><b style={{ color: '#fff' }}>{fmt(detail)}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Stock: </span><b style={{ color: '#fff' }}>{detail.stock_qty ?? 0}</b> &nbsp; <span style={{ color: 'var(--muted)' }}>Low at: </span><b style={{ color: '#fff' }}>{detail.low_stock_at ?? 5}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Status: </span><b style={{ color: '#fff' }}>{detail.status}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_name_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.name}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_description_label')}{' '}</span><span style={{ color: 'var(--silver)' }}>{detail.description || '—'}</span></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_sku_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.sku || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_category_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.category}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_price_label')}{' '}</span><b style={{ color: '#fff' }}>{fmt(detail)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_stock_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.stock_qty ?? 0}</b> &nbsp; <span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_low_at_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.low_stock_at ?? 5}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_status_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.status}</b></div>
             </div>
           </div>
         </div>
@@ -396,34 +399,34 @@ export function Products({ session, role }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowForm(false)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>{editing ? 'Edit Product' : 'Add Product'}</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{editing ? tr(lang, 'prod_edit_product') : tr(lang, 'prod_add_product')}</h3>
               <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Product Name *</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inp} placeholder="Product name" /></div>
-                <div><label style={lbl}>SKU</label><input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} style={inp} placeholder="SKU" /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_name_label')}</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inp} placeholder={tr(lang, 'prod_form_name_placeholder')} /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_sku_label')}</label><input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} style={inp} placeholder={tr(lang, 'prod_form_sku_placeholder')} /></div>
               </div>
-              <div><label style={lbl}>Description</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder="Description" /></div>
+              <div><label style={lbl}>{tr(lang, 'prod_form_description_label')}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder={tr(lang, 'prod_form_description_placeholder')} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={lbl}>Category</label>
+                  <label style={lbl}>{tr(lang, 'prod_form_category_label')}</label>
                   <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
-                    {['general', 'vps', 'ip', 'dollar', 'number', 'course', 'account', 'service'].map(c => <option key={c} value={c} style={{ background: '#1a0d0e' }}>{c}</option>)}
+                    {['general', 'vps', 'ip', 'dollar', 'number', 'course', 'account', 'service'].map(c => <option key={c} value={c} style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_cat_' + c)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Type</label>
+                  <label style={lbl}>{tr(lang, 'prod_form_type_label')}</label>
                   <select value={form.product_type} onChange={e => setForm({ ...form, product_type: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
-                    {['physical', 'service', 'ip', 'vps', 'number', 'course'].map(t => <option key={t} value={t} style={{ background: '#1a0d0e' }}>{t}</option>)}
+                    {['physical', 'service', 'ip', 'vps', 'number', 'course'].map(t => <option key={t} value={t} style={{ background: '#1a0d0e' }}>{tr(lang, 'prod_type_' + t)}</option>)}
                   </select>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Selling Price</label><input type="number" step="0.01" value={form.selling_price} onChange={e => setForm({ ...form, selling_price: e.target.value })} style={inp} /></div>
-                <div><label style={lbl}>Purchase Cost</label><input type="number" step="0.01" value={form.purchase_cost} onChange={e => setForm({ ...form, purchase_cost: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_selling_price')}</label><input type="number" step="0.01" value={form.selling_price} onChange={e => setForm({ ...form, selling_price: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_purchase_cost')}</label><input type="number" step="0.01" value={form.purchase_cost} onChange={e => setForm({ ...form, purchase_cost: e.target.value })} style={inp} /></div>
                 <div>
-                  <label style={lbl}>Currency</label>
+                  <label style={lbl}>{tr(lang, 'prod_form_currency')}</label>
                   <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
                     <option value="BDT" style={{ background: '#1a0d0e' }}>BDT</option>
                     <option value="USD" style={{ background: '#1a0d0e' }}>USD</option>
@@ -431,15 +434,15 @@ export function Products({ session, role }) {
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Stock Qty</label><input type="number" value={form.stock_qty} onChange={e => setForm({ ...form, stock_qty: e.target.value })} style={inp} /></div>
-                <div><label style={lbl}>Low Stock Alert At</label><input type="number" value={form.low_stock_at} onChange={e => setForm({ ...form, low_stock_at: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_stock_qty')}</label><input type="number" value={form.stock_qty} onChange={e => setForm({ ...form, stock_qty: e.target.value })} style={inp} /></div>
+                <div><label style={lbl}>{tr(lang, 'prod_form_low_stock_alert')}</label><input type="number" value={form.low_stock_at} onChange={e => setForm({ ...form, low_stock_at: e.target.value })} style={inp} /></div>
               </div>
-              <div><label style={lbl}>Image URL</label><input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} style={inp} placeholder="https://…" /></div>
+              <div><label style={lbl}>{tr(lang, 'prod_form_image_url')}</label><input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} style={inp} placeholder="https://…" /></div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="submit" disabled={busy === 'save'} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                  {busy === 'save' ? 'Saving…' : editing ? 'Update Product' : 'Add Product'}
+                  {busy === 'save' ? tr(lang, 'prod_saving') : editing ? tr(lang, 'prod_update_product') : tr(lang, 'prod_add_product')}
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'prod_cancel')}</button>
               </div>
             </form>
           </div>

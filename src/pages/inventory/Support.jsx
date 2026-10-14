@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase.js'
+import { useLang } from '../../i18n/LanguageContext.jsx'
+import { tr } from '../../i18n/translations.js'
 
-async function adminApi(session, action, payload = {}) {
+async function adminApi(session, action, payload = {}, lang) {
   const r = await fetch('/api/admin', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
@@ -9,15 +11,17 @@ async function adminApi(session, action, payload = {}) {
   })
   const text = await r.text()
   let j
-  try { j = JSON.parse(text) } catch { throw new Error('API unavailable on static hosting — use Vercel version for this action') }
-  if (!r.ok) throw new Error(j.error || 'failed')
+  try { j = JSON.parse(text) } catch { throw new Error(tr(lang, 'supp_api_unavailable')) }
+  if (!r.ok) throw new Error(j.error || tr(lang, 'supp_failed'))
   return j
 }
 
 const STATUS = ['open', 'in_progress', 'resolved', 'closed']
 const STATUS_C = { open: '#ffb020', in_progress: '#4da3ff', resolved: '#3ddc84', closed: 'var(--muted)' }
+const DEFAULT_SEMINAR_TITLE = 'Weekly Free Seminar'
 
 export function Tickets({ session }) {
+  const { lang } = useLang()
   const [tickets, setTickets] = useState([])
   const [filter, setFilter] = useState('open')
   const [openId, setOpenId] = useState(null)
@@ -26,20 +30,20 @@ export function Tickets({ session }) {
   const [busy, setBusy] = useState(false)
 
   const load = async () => {
-    const j = await adminApi(session, 'list_tickets', { status: filter === 'all' ? null : filter })
+    const j = await adminApi(session, 'list_tickets', { status: filter === 'all' ? null : filter }, lang)
     setTickets(j.tickets || [])
   }
   useEffect(() => { load() }, [filter])
 
   const openTicket = async (id) => {
     setOpenId(id)
-    const j = await adminApi(session, 'ticket_messages', { ticket_id: id })
+    const j = await adminApi(session, 'ticket_messages', { ticket_id: id }, lang)
     setMsgs(j.messages || [])
   }
 
   const setStatus = async (id, status) => {
     setBusy(true)
-    await adminApi(session, 'ticket_set_status', { ticket_id: id, status })
+    await adminApi(session, 'ticket_set_status', { ticket_id: id, status }, lang)
     setBusy(false); load()
     if (openId === id) openTicket(id)
   }
@@ -48,7 +52,7 @@ export function Tickets({ session }) {
     e.preventDefault()
     if (!reply.trim()) return
     setBusy(true)
-    await adminApi(session, 'ticket_reply', { ticket_id: openId, message: reply.trim().slice(0, 2000) })
+    await adminApi(session, 'ticket_reply', { ticket_id: openId, message: reply.trim().slice(0, 2000) }, lang)
     setReply(''); setBusy(false); openTicket(openId); load()
   }
 
@@ -57,7 +61,7 @@ export function Tickets({ session }) {
   if (openId && cur) {
     return (
       <div>
-        <button className="btn btn-sm btn-ghost" onClick={() => setOpenId(null)} style={{marginBottom:12}}>← Back</button>
+        <button className="btn btn-sm btn-ghost" onClick={() => setOpenId(null)} style={{marginBottom:12}}>← {tr(lang, 'supp_back')}</button>
         <div className="card" style={{marginBottom:16}}>
           <h3>#{cur.id} — {cur.subject}</h3>
           <p style={{color:'var(--muted)', fontSize:'.9rem', margin:'6px 0 12px'}}>
@@ -67,26 +71,26 @@ export function Tickets({ session }) {
           <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
             {STATUS.map(s => (
               <button key={s} className={`btn btn-sm ${cur.status === s ? '' : 'btn-ghost'}`}
-                disabled={busy} onClick={() => setStatus(cur.id, s)}>{s}</button>
+                disabled={busy} onClick={() => setStatus(cur.id, s)}>{tr(lang, 'supp_ticket_status_' + s)}</button>
             ))}
           </div>
         </div>
         <div className="card">
-          <h4 style={{marginBottom:12}}>Conversation</h4>
+          <h4 style={{marginBottom:12}}>{tr(lang, 'supp_conversation')}</h4>
           <div style={{display:'flex', flexDirection:'column', gap:10, marginBottom:16, maxHeight:340, overflowY:'auto'}}>
             {msgs.map(m => (
               <div key={m.id} style={{background: m.is_staff ? 'rgba(77,163,255,.08)' : 'rgba(255,255,255,.04)',
                 border:'1px solid var(--border)', borderRadius:12, padding:'10px 14px'}}>
                 <div style={{fontSize:'.78rem', color:'var(--muted)', marginBottom:4}}>
-                  {m.is_staff ? '🎧 Staff' : '👤 Member'} • {new Date(m.created_at).toLocaleString()}
+                  {m.is_staff ? tr(lang, 'supp_staff') : tr(lang, 'supp_member')} • {new Date(m.created_at).toLocaleString()}
                 </div>
                 <div style={{whiteSpace:'pre-line'}}>{m.message}</div>
               </div>
             ))}
           </div>
           <form onSubmit={sendReply} style={{display:'flex', gap:8}}>
-            <input placeholder="Reply as support…" value={reply} onChange={e => setReply(e.target.value)} maxLength={2000} style={{flex:1}} />
-            <button className="btn" disabled={busy}>Send</button>
+            <input placeholder={tr(lang, 'supp_reply_ph')} value={reply} onChange={e => setReply(e.target.value)} maxLength={2000} style={{flex:1}} />
+            <button className="btn" disabled={busy}>{tr(lang, 'supp_send')}</button>
           </form>
         </div>
       </div>
@@ -97,11 +101,11 @@ export function Tickets({ session }) {
     <div>
       <div className="tabs" style={{justifyContent:'flex-start', marginBottom:18}}>
         {['open', 'in_progress', 'resolved', 'closed', 'all'].map(f => (
-          <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+          <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f === 'all' ? tr(lang, 'supp_all') : tr(lang, 'supp_ticket_status_' + f)}</button>
         ))}
       </div>
       <div className="tbl-wrap"><table className="data-table">
-        <thead><tr><th>ID</th><th>Subject</th><th>Member</th><th>Category</th><th>Priority</th><th>Status</th><th>Updated</th></tr></thead>
+        <thead><tr><th>{tr(lang, 'supp_th_id')}</th><th>{tr(lang, 'supp_th_subject')}</th><th>{tr(lang, 'supp_th_member')}</th><th>{tr(lang, 'supp_th_category')}</th><th>{tr(lang, 'supp_th_priority')}</th><th>{tr(lang, 'supp_th_status')}</th><th>{tr(lang, 'supp_th_updated')}</th></tr></thead>
         <tbody>
           {tickets.map(t => (
             <tr key={t.id} onClick={() => openTicket(t.id)} style={{cursor:'pointer'}}>
@@ -110,29 +114,30 @@ export function Tickets({ session }) {
               <td style={{fontSize:'.85rem'}}>{t.profiles?.email || t.user_id.slice(0, 8)}</td>
               <td>{t.category}</td>
               <td>{t.priority}</td>
-              <td><b style={{color: STATUS_C[t.status]}}>{t.status}</b></td>
+              <td><b style={{color: STATUS_C[t.status]}}>{tr(lang, 'supp_ticket_status_' + t.status)}</b></td>
               <td style={{fontSize:'.85rem'}}>{new Date(t.updated_at).toLocaleDateString()}</td>
             </tr>
           ))}
         </tbody>
       </table></div>
-      {tickets.length === 0 && <p style={{color:'var(--muted)', padding:20}}>No tickets.</p>}
+      {tickets.length === 0 && <p style={{color:'var(--muted)', padding:20}}>{tr(lang, 'supp_no_tickets')}</p>}
     </div>
   )
 }
 
 export function Inquiries({ session }) {
+  const { lang } = useLang()
   const [rows, setRows] = useState([])
   const [filter, setFilter] = useState('new')
 
   const load = async () => {
-    const j = await adminApi(session, 'list_inquiries', { status: filter === 'all' ? null : filter })
+    const j = await adminApi(session, 'list_inquiries', { status: filter === 'all' ? null : filter }, lang)
     setRows(j.inquiries || [])
   }
   useEffect(() => { load() }, [filter])
 
   const setStatus = async (id, status) => {
-    await adminApi(session, 'inquiry_set_status', { id, status })
+    await adminApi(session, 'inquiry_set_status', { id, status }, lang)
     load()
   }
 
@@ -140,7 +145,7 @@ export function Inquiries({ session }) {
     <div>
       <div className="tabs" style={{justifyContent:'flex-start', marginBottom:18}}>
         {['new', 'replied', 'closed', 'all'].map(f => (
-          <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+          <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f === 'all' ? tr(lang, 'supp_all') : tr(lang, 'supp_inquiry_status_' + f)}</button>
         ))}
       </div>
       <div style={{display:'flex', flexDirection:'column', gap:10}}>
@@ -157,18 +162,19 @@ export function Inquiries({ session }) {
             <div style={{display:'flex', gap:8}}>
               {['new', 'replied', 'closed'].map(s => (
                 <button key={s} className={`btn btn-sm ${r.status === s ? '' : 'btn-ghost'}`}
-                  onClick={() => setStatus(r.id, s)}>{s}</button>
+                  onClick={() => setStatus(r.id, s)}>{tr(lang, 'supp_inquiry_status_' + s)}</button>
               ))}
             </div>
           </div>
         ))}
       </div>
-      {rows.length === 0 && <p style={{color:'var(--muted)', padding:20}}>No inquiries.</p>}
+      {rows.length === 0 && <p style={{color:'var(--muted)', padding:20}}>{tr(lang, 'supp_no_inquiries')}</p>}
     </div>
   )
 }
 
 export function SeminarRegs({ session }) {
+  const { lang } = useLang()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
@@ -189,7 +195,7 @@ export function SeminarRegs({ session }) {
     setLoading(true)
     setErr(null)
     try {
-      const j = await adminApi(session, 'list_seminar_regs')
+      const j = await adminApi(session, 'list_seminar_regs', {}, lang)
       setRows(j.regs || [])
     } catch (e) {
       // GitHub Pages (static) has no /api — fall back to direct Supabase read
@@ -218,7 +224,7 @@ export function SeminarRegs({ session }) {
     const q = search.toLowerCase()
     list = list.filter(r => (r.name || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q) || (r.mobile || '').includes(q) || (r.seminar_title || '').toLowerCase().includes(q))
   }
-  if (seminarF !== 'all') list = list.filter(r => (r.seminar_title || 'Weekly Free Seminar') === seminarF)
+  if (seminarF !== 'all') list = list.filter(r => (r.seminar_title || DEFAULT_SEMINAR_TITLE) === seminarF)
   if (statusF !== 'all') {
     if (statusF === 'checked_in') list = list.filter(checkInOf)
     else if (statusF === 'pending') list = list.filter(r => !checkInOf(r) && !cancelledOf(r))
@@ -237,16 +243,16 @@ export function SeminarRegs({ session }) {
   const curPage = Math.min(page, totalPages)
   const pageItems = list.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE)
 
-  const seminars = [...new Set(rows.map(r => r.seminar_title || 'Weekly Free Seminar'))]
+  const seminars = [...new Set(rows.map(r => r.seminar_title || DEFAULT_SEMINAR_TITLE))]
 
   const del = async (r) => {
-    if (!confirm(`"${r.name}"-এর registration delete করবেন?`)) return
+    if (!confirm('"' + r.name + '" ' + tr(lang, 'supp_confirm_delete_reg'))) return
     setBusy(r.id)
     try {
-      await adminApi(session, 'delete_seminar_reg', { id: r.id })
+      await adminApi(session, 'delete_seminar_reg', { id: r.id }, lang)
       load()
     } catch (e) {
-      alert('❌ ' + e.message)
+      alert(e.message)
     }
     setBusy(null)
   }
@@ -254,32 +260,32 @@ export function SeminarRegs({ session }) {
   const toggleCheckIn = async (r) => {
     setBusy(r.id)
     try {
-      await adminApi(session, 'toggle_seminar_checkin', { id: r.id, checked_in: !checkInOf(r) })
+      await adminApi(session, 'toggle_seminar_checkin', { id: r.id, checked_in: !checkInOf(r) }, lang)
       load()
     } catch (e) {
-      alert('❌ Check-in update failed: ' + e.message + '\n\nNote: check-in column may not exist in DB yet.')
+      alert(tr(lang, 'supp_checkin_failed') + e.message + '\n\n' + tr(lang, 'supp_checkin_note'))
     }
     setBusy(null)
   }
 
   const addReg = async (e) => {
     e.preventDefault()
-    if (!addForm.name.trim() || !addForm.mobile.trim()) return alert('Name ও Mobile দিন')
+    if (!addForm.name.trim() || !addForm.mobile.trim()) return alert(tr(lang, 'supp_alert_name_mobile'))
     setBusy('add')
     try {
-      await adminApi(session, 'add_seminar_reg', { name: addForm.name.trim(), mobile: addForm.mobile.trim(), email: addForm.email.trim() })
+      await adminApi(session, 'add_seminar_reg', { name: addForm.name.trim(), mobile: addForm.mobile.trim(), email: addForm.email.trim() }, lang)
       setShowAdd(false)
       setAddForm({ name: '', mobile: '', email: '' })
       load()
     } catch (ex) {
-      alert('❌ ' + ex.message)
+      alert(ex.message)
     }
     setBusy(null)
   }
 
   const exportCSV = () => {
-    const header = 'Registration ID,Name,Email,Mobile,Seminar,Registration Date,Payment Status,Check-in\n'
-    const rows2 = list.map(r => `REG-${String(r.id).padStart(4, '0')},"${r.name || ''}",${r.email || ''},${r.mobile || ''},"${r.seminar_title || 'Weekly Free Seminar'}",${new Date(r.created_at).toLocaleDateString('en-GB')},${payStatusOf(r)},${checkInOf(r) ? 'Checked In' : 'Not Checked'}`).join('\n')
+    const header = tr(lang, 'supp_csv_header') + '\n'
+    const rows2 = list.map(r => `REG-${String(r.id).padStart(4, '0')},"${r.name || ''}",${r.email || ''},${r.mobile || ''},"${r.seminar_title || DEFAULT_SEMINAR_TITLE}",${new Date(r.created_at).toLocaleDateString('en-GB')},${payStatusOf(r)},${checkInOf(r) ? tr(lang, 'supp_checked_in') : tr(lang, 'supp_not_checked')}`).join('\n')
     const blob = new Blob([header + rows2], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -301,14 +307,14 @@ export function SeminarRegs({ session }) {
   }
 
   const stats = [
-    { label: 'Total Registrations', value: total.toLocaleString(), desc: 'All seminar registrations', color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '👥' },
-    { label: 'Checked In', value: checkedIn.toLocaleString(), desc: 'Attended the seminar', color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '✓' },
-    { label: 'Pending', value: pending.toLocaleString(), desc: 'Not yet checked in', color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '🕐' },
-    { label: 'Cancelled', value: cancelled.toLocaleString(), desc: 'Registration cancelled', color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '✕' },
+    { label: tr(lang, 'supp_stat_total'), value: total.toLocaleString(), desc: tr(lang, 'supp_stat_total_desc'), color: '#ff6b6b', bg: 'rgba(232,35,42,.15)', icon: '👥' },
+    { label: tr(lang, 'supp_stat_checked'), value: checkedIn.toLocaleString(), desc: tr(lang, 'supp_stat_checked_desc'), color: '#4da3ff', bg: 'rgba(77,163,255,.15)', icon: '✓' },
+    { label: tr(lang, 'supp_stat_pending'), value: pending.toLocaleString(), desc: tr(lang, 'supp_stat_pending_desc'), color: '#2ecc71', bg: 'rgba(46,204,113,.15)', icon: '🕐' },
+    { label: tr(lang, 'supp_stat_cancelled'), value: cancelled.toLocaleString(), desc: tr(lang, 'supp_stat_cancelled_desc'), color: '#f5b942', bg: 'rgba(245,185,66,.15)', icon: '✕' },
   ]
 
-  if (loading) return <p style={{ color: 'var(--muted)', padding: 20 }}>Loading…</p>
-  if (err) return <p style={{ color: '#ff6b6e', padding: 20 }}>Error: {err}</p>
+  if (loading) return <p style={{ color: 'var(--muted)', padding: 20 }}>{tr(lang, 'supp_loading')}</p>
+  if (err) return <p style={{ color: '#ff6b6e', padding: 20 }}>{tr(lang, 'supp_error')} {err}</p>
 
   return (
     <div>
@@ -317,21 +323,21 @@ export function SeminarRegs({ session }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📅</div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Seminar Registrations</h2>
-            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage all seminar registrations, check-in status, attendance and manage participants.</p>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>{tr(lang, 'supp_seminar_regs')}</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'supp_seminar_regs_sub')}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, position: 'relative' }}>
           <button onClick={() => setExportOpen(!exportOpen)} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>
-            ↓ Export ▾
+            ↓ {tr(lang, 'supp_export')} ▾
           </button>
           {exportOpen && (
             <div style={{ position: 'absolute', top: '100%', right: 160, marginTop: 6, background: '#1a0d0e', border: '1px solid rgba(232,35,42,.4)', borderRadius: 10, padding: 6, zIndex: 10, minWidth: 150 }}>
-              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>Export as CSV</button>
+              <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'supp_export_csv')}</button>
             </div>
           )}
           <button onClick={() => setShowAdd(true)} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-            + Add Registration
+            + {tr(lang, 'supp_add_registration')}
           </button>
         </div>
       </div>
@@ -353,32 +359,32 @@ export function SeminarRegs({ session }) {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
-        <input placeholder="Search by name, email, phone or seminar title…" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        <input placeholder={tr(lang, 'supp_search_ph')} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ flex: 1, minWidth: 220, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.85rem', outline: 'none' }} />
         <select value={seminarF} onChange={e => { setSeminarF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Seminars</option>
-          {seminars.map(s => <option key={s} value={s} style={{ background: '#1a0d0e' }}>{s}</option>)}
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_all_seminars')}</option>
+          {seminars.map(s => <option key={s} value={s} style={{ background: '#1a0d0e' }}>{s === DEFAULT_SEMINAR_TITLE ? tr(lang, 'supp_default_seminar') : s}</option>)}
         </select>
         <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
-          <option value="checked_in" style={{ background: '#1a0d0e' }}>Checked In</option>
-          <option value="pending" style={{ background: '#1a0d0e' }}>Pending</option>
-          <option value="cancelled" style={{ background: '#1a0d0e' }}>Cancelled</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_all_statuses')}</option>
+          <option value="checked_in" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_checked_in')}</option>
+          <option value="pending" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_pending')}</option>
+          <option value="cancelled" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_cancelled')}</option>
         </select>
         <select value={payF} onChange={e => { setPayF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Payment Status</option>
-          <option value="paid" style={{ background: '#1a0d0e' }}>Paid</option>
-          <option value="pending" style={{ background: '#1a0d0e' }}>Pending</option>
-          <option value="failed" style={{ background: '#1a0d0e' }}>Failed</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_all_payment')}</option>
+          <option value="paid" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_paid')}</option>
+          <option value="pending" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_pending')}</option>
+          <option value="failed" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_failed')}</option>
         </select>
         <select value={dateF} onChange={e => { setDateF(e.target.value); setPage(1) }} style={selStyle}>
-          <option value="all" style={{ background: '#1a0d0e' }}>All Time</option>
-          <option value="today" style={{ background: '#1a0d0e' }}>Today</option>
-          <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
-          <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
+          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_all_time')}</option>
+          <option value="today" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_today')}</option>
+          <option value="week" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_week')}</option>
+          <option value="month" style={{ background: '#1a0d0e' }}>{tr(lang, 'supp_opt_month')}</option>
         </select>
-        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>Clear Filters</button>
-        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>Refresh</button>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>{tr(lang, 'supp_clear_filters')}</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>{tr(lang, 'supp_refresh')}</button>
       </div>
 
       {/* Table */}
@@ -387,7 +393,7 @@ export function SeminarRegs({ session }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {['#', 'User', 'Seminar', 'Registration ID', 'Contact Info', 'Registration Date', 'Payment Status', 'Check-in Status', 'Attended', 'Actions'].map(h => (
+                {['#', tr(lang, 'supp_th_user'), tr(lang, 'supp_th_seminar'), tr(lang, 'supp_th_reg_id'), tr(lang, 'supp_th_contact'), tr(lang, 'supp_th_reg_date'), tr(lang, 'supp_th_payment'), tr(lang, 'supp_th_checkin'), tr(lang, 'supp_th_attended'), tr(lang, 'supp_th_actions')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '12px 14px', fontSize: '.78rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -411,8 +417,8 @@ export function SeminarRegs({ session }) {
                       </div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: '.85rem', color: '#fff', whiteSpace: 'nowrap' }}>{r.seminar_title || 'Weekly Free Seminar'}</div>
-                      <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{r.seminar_date ? new Date(r.seminar_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Friday 9:00 PM'} • {r.location || 'Online'}</div>
+                      <div style={{ fontSize: '.85rem', color: '#fff', whiteSpace: 'nowrap' }}>{r.seminar_title || tr(lang, 'supp_default_seminar')}</div>
+                      <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{r.seminar_date ? new Date(r.seminar_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : tr(lang, 'supp_default_seminar_time')} • {r.location || tr(lang, 'supp_online')}</div>
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: 'rgba(232,35,42,.12)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
@@ -426,33 +432,33 @@ export function SeminarRegs({ session }) {
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {pay === 'paid' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● Paid</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● {tr(lang, 'supp_paid')}</span>
                       ) : pay === 'pending' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>● Pending</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)' }}>● {tr(lang, 'supp_pending')}</span>
                       ) : pay === 'failed' ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● Failed</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● {tr(lang, 'supp_badge_failed')}</span>
                       ) : (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(255,255,255,.06)', color: 'var(--muted)', border: '1px solid rgba(255,255,255,.15)' }}>● Free</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(255,255,255,.06)', color: 'var(--muted)', border: '1px solid rgba(255,255,255,.15)' }}>● {tr(lang, 'supp_free')}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {checked ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● Checked In</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● {tr(lang, 'supp_checked_in')}</span>
                       ) : (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● Not Checked</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● {tr(lang, 'supp_not_checked')}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {checked ? (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● Yes</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)' }}>● {tr(lang, 'supp_yes')}</span>
                       ) : (
-                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● No</span>
+                        <span style={{ padding: '4px 10px', borderRadius: 7, fontSize: '.75rem', fontWeight: 600, background: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)' }}>● {tr(lang, 'supp_no')}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <button title="View" onClick={() => setDetail(r)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
-                      <button title="Toggle Check-in" onClick={() => toggleCheckIn(r)} disabled={busy === r.id} style={actionBtn('rgba(46,204,113,.1)', 'rgba(46,204,113,.4)', '#2ecc71')}>✓</button>
-                      <button title="Delete" onClick={() => del(r)} disabled={busy === r.id} style={actionBtn('rgba(232,35,42,.1)', 'rgba(232,35,42,.4)', '#ff6b6b')}>🗑</button>
+                      <button title={tr(lang, 'supp_view')} onClick={() => setDetail(r)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
+                      <button title={tr(lang, 'supp_toggle_checkin')} onClick={() => toggleCheckIn(r)} disabled={busy === r.id} style={actionBtn('rgba(46,204,113,.1)', 'rgba(46,204,113,.4)', '#2ecc71')}>✓</button>
+                      <button title={tr(lang, 'supp_delete')} onClick={() => del(r)} disabled={busy === r.id} style={actionBtn('rgba(232,35,42,.1)', 'rgba(232,35,42,.4)', '#ff6b6b')}>🗑</button>
                     </td>
                   </tr>
                 )
@@ -462,12 +468,12 @@ export function SeminarRegs({ session }) {
         </div>
         {pageItems.length === 0 && (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>No registrations found</div>
-            <div style={{ fontSize: '.85rem' }}>No seminar registrations match your filters.</div>
+            <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 4 }}>{tr(lang, 'supp_empty_title')}</div>
+            <div style={{ fontSize: '.85rem' }}>{tr(lang, 'supp_empty_sub')}</div>
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1} to {Math.min(curPage * PAGE_SIZE, list.length)} of {list.length.toLocaleString()} registrations</span>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'supp_showing')} {list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1} {tr(lang, 'supp_showing_to')} {Math.min(curPage * PAGE_SIZE, list.length)} {tr(lang, 'supp_showing_of')} {list.length.toLocaleString()} {tr(lang, 'supp_showing_regs')}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <button onClick={() => setPage(1)} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>«</button>
             <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
@@ -488,16 +494,16 @@ export function SeminarRegs({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Registration Details</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'supp_detail_title')}</h3>
               <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, fontSize: '.9rem' }}>
-              <div><span style={{ color: 'var(--muted)' }}>Name: </span><b style={{ color: '#fff' }}>{detail.name}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Email: </span><b style={{ color: '#fff' }}>{detail.email || '—'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Mobile: </span><b style={{ color: '#fff' }}>{detail.mobile}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Seminar: </span><b style={{ color: '#fff' }}>{detail.seminar_title || 'Weekly Free Seminar'}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>Registered: </span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
-              <div><span style={{ color: 'var(--muted)' }}>Check-in: </span><b style={{ color: '#fff' }}>{checkInOf(detail) ? 'Checked In' : 'Not Checked'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_name')}{' '}</span><b style={{ color: '#fff' }}>{detail.name}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_email')}{' '}</span><b style={{ color: '#fff' }}>{detail.email || '—'}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_mobile')}{' '}</span><b style={{ color: '#fff' }}>{detail.mobile}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_seminar')}{' '}</span><b style={{ color: '#fff' }}>{detail.seminar_title || tr(lang, 'supp_default_seminar')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_registered')}{' '}</span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'supp_d_checkin')}{' '}</span><b style={{ color: '#fff' }}>{checkInOf(detail) ? tr(lang, 'supp_checked_in') : tr(lang, 'supp_not_checked')}</b></div>
             </div>
           </div>
         </div>
@@ -508,15 +514,15 @@ export function SeminarRegs({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowAdd(false)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>Add Registration</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'supp_add_registration')}</h3>
               <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <form onSubmit={addReg} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Full Name *" style={inp} />
-              <input value={addForm.mobile} onChange={e => setAddForm({ ...addForm, mobile: e.target.value })} placeholder="Mobile Number *" style={inp} />
-              <input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder="Email Address" style={inp} />
+              <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder={tr(lang, 'supp_ph_name')} style={inp} />
+              <input value={addForm.mobile} onChange={e => setAddForm({ ...addForm, mobile: e.target.value })} placeholder={tr(lang, 'supp_ph_mobile')} style={inp} />
+              <input value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} placeholder={tr(lang, 'supp_ph_email')} style={inp} />
               <button type="submit" disabled={busy === 'add'} style={{ padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                {busy === 'add' ? 'Adding…' : 'Add Registration'}
+                {busy === 'add' ? tr(lang, 'supp_adding') : tr(lang, 'supp_add_registration')}
               </button>
             </form>
           </div>

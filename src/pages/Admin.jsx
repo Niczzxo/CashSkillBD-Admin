@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { navigate, link } from '../lib/router.js'
 import { fmt } from '../config.js'
+
+// Strip leading emoji from translation labels (sidebar uses SVG icons instead)
+const stripEmoji = (s) => String(s || '').replace(/^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}\u{2640}\u{2642}\u{2690}-\u{269B}\u{2700}-\u{27BF}]+\s*/u, '').trim()
 import { IDash, IGear, IOrders, ILessons, IMembers, ITeam, IReviews, ITickets, IInquiries, ISeminar, IProducts, IVps, IPayments, ISupport, IBox, IClock, IChart } from '../components/icons.jsx'
 
 async function adminApi(session, action, payload = {}) {
@@ -182,14 +185,14 @@ export function Admin() {
                   {g.items.map(it => (
                     <button key={it.id} className={`admin-item ${sec === it.id ? 'active' : ''}`} onClick={() => goSec(it.id)}>
                       <span className="admin-item-icon">{it.icon}</span>
-                      <span>{tr(lang, it.key)}</span>
+                      <span>{stripEmoji(tr(lang, it.key))}</span>
                     </button>
                   ))}
                 </div>
               ))}
             </aside>
             <div className="admin-main">
-              <h3 className="sec-title admin-sec-title">{tr(lang, SEC_TITLES[sec])}</h3>
+              {sec !== 'dashboard' && <h3 className="sec-title admin-sec-title">{stripEmoji(tr(lang, SEC_TITLES[sec]))}</h3>}
               {renderSec()}
             </div>
         </div>

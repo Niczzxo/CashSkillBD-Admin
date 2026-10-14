@@ -138,12 +138,18 @@ export function Dashboard({ session, goSec }) {
       {/* Chart + Quick Stats */}
       <div style={{display:'grid', gridTemplateColumns:'1.6fr 1fr', gap:16, marginBottom:20}} className="dash-mid">
         <div className="panel" style={{border:'1px solid rgba(255,91,91,.30)'}}>
-          <div className="panel-head">
-            <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
-            <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <div style={{display:'flex', flexDirection:'column', gap:12, marginBottom:16}}>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
+              <h3 style={{display:'flex', alignItems:'center', gap:8, fontSize:'1rem', fontWeight:700, margin:0, whiteSpace:'nowrap'}}><span style={{color:'#ff6b6b'}}>📊</span> Monthly Sales Overview</h3>
               <span style={{display:'flex', alignItems:'center', gap:6, padding:'6px 12px', background:'rgba(255,255,255,.04)', border:'1px solid var(--border)', borderRadius:8, fontSize:'.85rem', color:'var(--silver)'}}>
                 📅 {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} ▾
               </span>
+            </div>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10}}>
+              <div style={{display:'flex', gap:16, fontSize:'.8rem', color:'var(--muted)'}}>
+                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#ff5b5b', marginRight:6}} />Sales</span>
+                <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#666', marginRight:6}} />Orders</span>
+              </div>
               <div className="chart-controls">
                 <button className={`chart-btn ${range===1?'active':''}`} onClick={()=>setRange(1)}>১ মাস</button>
                 <button className={`chart-btn ${range===3?'active':''}`} onClick={()=>setRange(3)}>৩ মাস</button>
@@ -151,10 +157,6 @@ export function Dashboard({ session, goSec }) {
                 <button className={`chart-btn ${range===12?'active':''}`} onClick={()=>setRange(12)}>১২ মাস</button>
               </div>
             </div>
-          </div>
-          <div style={{display:'flex', gap:16, marginBottom:8, fontSize:'.8rem', color:'var(--muted)'}}>
-            <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#ff5b5b', marginRight:6}} />Sales</span>
-            <span><span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#666', marginRight:6}} />Orders</span>
           </div>
           {monthly.every(m => m.total === 0) ? (
             <div style={{height:200, display:'grid', placeItems:'center', color:'var(--muted)'}}>

@@ -719,8 +719,9 @@ label.f-label { display: block; font-size: .85rem; color: var(--muted); margin-b
 /* ═══ Full-width Admin Panel — zero outer margins ═══ */
 html, body, #root { width: 100%; margin: 0; padding: 0; }
 .admin-nav .wrap,
-.admin-sec .wrap { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-.admin-nav-inner { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.admin-sec .wrap { max-width: none !important; width: 100% !important; margin: 0 !important; }
+.admin-nav-inner { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 24px !important; }
+.admin-sec .wrap { padding: 0 !important; }
 .admin-sec { width: 100%; max-width: none; margin: 0; padding: 0; }
 .admin-layout { width: 100%; max-width: none; margin: 0; padding: 0; display: flex; gap: 0; }
 .admin-main { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 24px; box-sizing: border-box; flex: 1; }

@@ -312,10 +312,10 @@ footer { border-top: 1px solid var(--border); padding: 54px 0 30px; background: 
 /* ═══════════ Admin Panel Redesign ═══════════ */
 /* ── Header ── */
 .admin-nav { position: sticky; top: 0; z-index: 100;
-  background: rgba(10,4,5,.92); backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border); }
+  background: #0d0506; backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(232,35,42,.4); height: 68px; }
 .admin-nav-inner { display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 12px 24px; max-width: 1600px; margin: 0 auto; }
+  gap: 16px; padding: 0 20px; height: 68px; max-width: 100%; margin: 0 auto; }
 .admin-brand { display: flex; align-items: center; gap: 12px; }
 .admin-brand-icon { font-size: 1.8rem; }
 .admin-brand-name { font-size: 1.15rem; font-weight: 800; color: #fff; line-height: 1.2; }
@@ -328,9 +328,10 @@ footer { border-top: 1px solid var(--border); padding: 54px 0 30px; background: 
   border: 1px solid rgba(232,35,42,.35); }
 
 /* ── Sidebar layout ── */
-.admin-layout { display: flex; gap: 20px; align-items: flex-start;
-  max-width: 1600px; margin: 0 auto; padding: 20px 24px 40px; }
-.admin-side { width: 264px; flex-shrink: 0; position: sticky; top: 84px;
+.admin-layout { display: flex; gap: 0; align-items: flex-start;
+  max-width: 100%; margin: 0; padding: 0; }
+.admin-main { flex: 1; min-width: 0; padding: 24px; background: #0a0405; }
+.admin-side { width: 300px; flex-shrink: 0; position: sticky; top: 84px;
   background: linear-gradient(180deg, rgba(20,8,9,.95), rgba(10,4,5,.95));
   border: 1px solid var(--border); border-radius: 16px; padding: 12px;
   max-height: calc(100svh - 104px); overflow-y: auto; overflow-x: hidden; }

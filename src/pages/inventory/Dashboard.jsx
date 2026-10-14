@@ -81,17 +81,17 @@ export function Dashboard({ session, goSec }) {
   if (loading) return <p style={{color:'var(--muted)', padding:20}}>লোড হচ্ছে…</p>
 
   const cards = [
-    { label: 'Total Products', sub: 'সক্রিয় প্রোডাক্ট', value: stats.products, icon: <IBox size={24} />, color: '#ff5b5b', bg: 'rgba(255,91,91,.12)', border: 'rgba(255,91,91,.35)' },
-    { label: 'Total Orders', sub: 'পেন্ডিং অর্ডার', value: stats.pendingOrders, icon: <IClock size={24} />, color: '#ffb84d', bg: 'rgba(255,184,77,.12)', border: 'rgba(255,184,77,.35)' },
-    { label: 'Total Revenue', sub: 'গত ৩০ দিনের বিক্রয়', value: money(stats.revenue30d), icon: <IMoney size={24} />, color: '#4dff88', bg: 'rgba(77,255,136,.10)', border: 'rgba(77,255,136,.30)' },
-    { label: 'Low Stock', sub: 'লো স্টক', value: lowStock.length, icon: <IWarn size={24} />, color: '#ff6bd6', bg: 'rgba(255,107,214,.10)', border: 'rgba(255,107,214,.35)' },
+    { label: 'Total Products', sub: 'সক্রিয় প্রোডাক্ট', value: stats.products, icon: <IBox size={22} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)', border: '#ff6b6b' },
+    { label: 'Total Orders', sub: 'পেন্ডিং অর্ডার', value: stats.pendingOrders, icon: <IClock size={22} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)', border: '#f5b942' },
+    { label: 'Total Revenue', sub: 'গত ৩০ দিনের বিক্রয়', value: money(stats.revenue30d), icon: <IMoney size={22} />, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', border: '#2ecc71' },
+    { label: 'Low Stock', sub: 'লো স্টক', value: lowStock.length, icon: <IWarn size={22} />, color: '#e84393', bg: 'rgba(232,67,147,.15)', border: '#e84393' },
   ]
 
   const quickStats = [
-    { label: 'Total Users', value: quick.users, icon: <IUsers size={20} />, color: '#ff5b5b', bg: 'rgba(255,91,91,.12)' },
-    { label: 'Active Members', value: quick.members, icon: <IUsers size={20} />, color: '#4da3ff', bg: 'rgba(77,163,255,.12)' },
-    { label: 'Total Tickets', value: quick.tickets, icon: <IBox size={20} />, color: '#ff5b5b', bg: 'rgba(255,91,91,.12)' },
-    { label: 'Pending Approvals', value: quick.approvals, icon: <IClock size={20} />, color: '#ffb84d', bg: 'rgba(255,184,77,.12)' },
+    { label: 'Total Users', value: quick.users, icon: <IUsers size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
+    { label: 'Active Members', value: quick.members, icon: <IUsers size={20} />, color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
+    { label: 'Total Tickets', value: quick.tickets, icon: <IBox size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
+    { label: 'Pending Approvals', value: quick.approvals, icon: <IClock size={20} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
   ]
 
   // Line chart SVG

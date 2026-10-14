@@ -24,7 +24,7 @@ const cardStyle = {
   background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))',
   border: '1px solid rgba(232,35,42,.35)',
   borderRadius: 14,
-  padding: 20,
+  padding: 22,
   display: 'flex',
   flexDirection: 'column',
   gap: 14,
@@ -40,7 +40,7 @@ const iconBoxStyle = (bg) => ({
 const labelStyle = { display: 'block', fontSize: '.82rem', color: 'var(--silver)', marginBottom: 5, fontWeight: 500 }
 
 const inputStyle = {
-  width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,.04)',
+  width: '100%', height: 40, padding: '0 12px', background: 'rgba(255,255,255,.04)',
   border: '1px solid rgba(255,255,255,.12)', borderRadius: 8,
   color: '#fff', fontSize: '.88rem', outline: 'none', boxSizing: 'border-box',
 }
@@ -358,7 +358,23 @@ export function SiteSettings({ session, role }) {
           <Toggle label="Maintenance Mode" desc="Enable to put the site in maintenance mode" checked={isOn('maintenance_mode')} onChange={v => set('maintenance_mode', String(v))} disabled={!fin} />
           <Toggle label="Allow Registration" desc="Allow new user registrations" checked={vals.allow_registration !== 'false'} onChange={v => set('allow_registration', String(v))} disabled={!fin} />
           <Toggle label="Email Notifications" desc="Send email notifications for important events" checked={vals.email_notifications !== 'false'} onChange={v => set('email_notifications', String(v))} disabled={!fin} />
-          <Field label="Default Language" value={vals.default_language || 'English (US)'} onChange={v => set('default_language', v)} disabled={!fin} />
+          <div>
+            <label style={labelStyle}>Default Language</label>
+            <select
+              value={vals.default_language || 'en'}
+              onChange={e => set('default_language', e.target.value)}
+              disabled={!fin}
+              style={{ ...inputStyle, cursor: 'pointer', appearance: 'none' }}
+            >
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="en">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="ar">العربية (Arabic)</option>
+              <option value="zh">简体中文 (Chinese)</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="ur">اردو (Urdu)</option>
+            </select>
+          </div>
         </div>
 
       </div>

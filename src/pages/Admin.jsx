@@ -207,10 +207,17 @@ export function Admin() {
 function OrdersTab({ session }) {
   const [orders, setOrders] = useState([])
   const [filter, setFilter] = useState('pending')
+  const [search, setSearch] = useState('')
+  const [payMethod, setPayMethod] = useState('all')
+  const [statusF, setStatusF] = useState('all')
+  const [dateRange, setDateRange] = useState('all')
+  const [page, setPage] = useState(1)
   const [busy, setBusy] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const PAGE_SIZE = 8
 
   const load = async () => {
-    const { data } = await supabase.from('cashskillbd_orders').select('*').order('created_at', { ascending: false }).limit(50)
+    const { data } = await supabase.from('cashskillbd_orders').select('*').order('created_at', { ascending: false }).limit(200)
     setOrders(data || [])
   }
   useEffect(() => { load() }, [])
@@ -224,53 +231,281 @@ function OrdersTab({ session }) {
       }
       await adminApi(session, action, { order_id: id, ...extra })
       await load()
+      setDetail(null)
     } catch (e) { alert('❌ ' + e.message) }
     setBusy(null)
   }
 
-  const list = orders.filter(o => filter === 'all' || o.status === filter)
+  // ── Stats ──
+  const total = orders.length
+  const pending = orders.filter(o => o.status === 'pending').length
+  const confirmed = orders.filter(o => o.status === 'confirmed').length
+  const revenue = orders.filter(o => o.status === 'confirmed').reduce((s, o) => s + Number(o.price || 0), 0)
+
+  // ── Filtered list ──
+  let list = orders.filter(o => filter === 'all' || o.status === filter)
+  if (search.trim()) {
+    const q = search.toLowerCase()
+    list = list.filter(o =>
+      String(o.id).includes(q) || String(o.name || '').toLowerCase().includes(q) ||
+      String(o.mobile || '').includes(q) || String(o.trx_id || '').toLowerCase().includes(q) ||
+      String(o.item_name || '').toLowerCase().includes(q)
+    )
+  }
+  if (payMethod !== 'all') list = list.filter(o => o.pay_method === payMethod)
+  if (statusF !== 'all') list = list.filter(o => o.status === statusF)
+  if (dateRange !== 'all') {
+    const now = new Date()
+    const days = dateRange === 'today' ? 1 : dateRange === 'week' ? 7 : 30
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+    list = list.filter(o => new Date(o.created_at) >= cutoff)
+  }
+
+  const clearFilters = () => { setSearch(''); setPayMethod('all'); setStatusF('all'); setDateRange('all'); setPage(1) }
+
+  // ── Pagination ──
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE))
+  const curPage = Math.min(page, totalPages)
+  const pageItems = list.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE)
+  const startIdx = list.length === 0 ? 0 : (curPage - 1) * PAGE_SIZE + 1
+  const endIdx = Math.min(curPage * PAGE_SIZE, list.length)
+
+  const payMethods = [...new Set(orders.map(o => o.pay_method).filter(Boolean))]
+
+  const initials = (name) => {
+    if (!name) return '?'
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    return name.slice(0, 2).toUpperCase()
+  }
+
+  const avatarColors = ['#e8232a', '#4da3ff', '#2ecc71', '#f5b942', '#e84393', '#8e44ad', '#00cec9']
+  const avatarColor = (name) => {
+    let h = 0
+    for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % 997
+    return avatarColors[h % avatarColors.length]
+  }
+
+  const statusBadge = (s) => {
+    const styles = {
+      pending: { bg: 'rgba(245,185,66,.15)', color: '#f5b942', border: '1px solid rgba(245,185,66,.4)', label: 'Pending' },
+      confirmed: { bg: 'rgba(46,204,113,.15)', color: '#2ecc71', border: '1px solid rgba(46,204,113,.4)', label: 'Confirmed' },
+      rejected: { bg: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)', label: 'Rejected' },
+      cancelled: { bg: 'rgba(232,35,42,.15)', color: '#ff6b6b', border: '1px solid rgba(232,35,42,.4)', label: 'Cancelled' },
+    }
+    const st = styles[s] || styles.pending
+    return <span style={{ padding: '4px 12px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: st.bg, color: st.color, border: st.border, whiteSpace: 'nowrap' }}>{st.label}</span>
+  }
+
+  const cardStyle = (border) => ({
+    flex: 1, minWidth: 200, background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))',
+    border: `1px solid ${border}`, borderRadius: 14, padding: 20,
+    display: 'flex', alignItems: 'flex-start', gap: 14, position: 'relative',
+  })
+
+  const selStyle = {
+    padding: '9px 12px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)',
+    borderRadius: 8, color: '#fff', fontSize: '.85rem', outline: 'none', cursor: 'pointer', minWidth: 150,
+  }
 
   return (
     <div>
-      <div className="tabs" style={{justifyContent:'flex-start', marginBottom:18}}>
-        {['pending', 'confirmed', 'all'].map(f => (
-          <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-            {f === 'pending' ? '⏳ পেন্ডিং' : f === 'confirmed' ? '✅ কনফার্মড' : '📋 সব'}
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>📋</div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff' }}>Orders</h2>
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>Manage customer orders, verify payments and track order status.</p>
+          </div>
+        </div>
+        <button onClick={load} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+          🔄 Refresh Orders
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={cardStyle('rgba(232,35,42,.4)')}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(232,35,42,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🛒</div>
+          <div>
+            <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Total Orders</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{total}</div>
+            <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>All time orders</div>
+          </div>
+          <span style={{ position: 'absolute', top: 16, right: 16, color: '#e8232a', fontSize: 18 }}>→</span>
+        </div>
+        <div style={cardStyle('rgba(245,185,66,.4)')}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(245,185,66,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🕐</div>
+          <div>
+            <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Pending Orders</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{pending}</div>
+            <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Awaiting verification</div>
+          </div>
+          <span style={{ position: 'absolute', top: 16, right: 16, color: '#f5b942', fontSize: 18 }}>→</span>
+        </div>
+        <div style={cardStyle('rgba(46,204,113,.4)')}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(46,204,113,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>✅</div>
+          <div>
+            <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Confirmed Orders</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{confirmed}</div>
+            <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>Successfully completed</div>
+          </div>
+          <span style={{ position: 'absolute', top: 16, right: 16, color: '#2ecc71', fontSize: 18 }}>→</span>
+        </div>
+        <div style={cardStyle('rgba(0,206,201,.4)')}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,206,201,.15)', display: 'grid', placeItems: 'center', fontSize: 24, flexShrink: 0 }}>🗄️</div>
+          <div>
+            <div style={{ fontSize: '.85rem', color: 'var(--muted)' }}>Total Revenue</div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>{fmt(revenue)}</div>
+            <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>From confirmed orders</div>
+          </div>
+          <span style={{ position: 'absolute', top: 16, right: 16, color: '#00cec9', fontSize: 18 }}>→</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        {[
+          { id: 'pending', label: 'Pending', count: pending },
+          { id: 'confirmed', label: 'Confirmed', count: confirmed },
+          { id: 'all', label: 'All Orders', count: total },
+        ].map(t => (
+          <button key={t.id} onClick={() => { setFilter(t.id); setPage(1) }}
+            style={{
+              padding: '9px 18px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '.88rem', fontWeight: 600,
+              background: filter === t.id ? 'linear-gradient(135deg, #e8232a, #b01020)' : 'rgba(255,255,255,.05)',
+              color: '#fff', display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: filter === t.id ? '0 4px 16px rgba(232,35,42,.35)' : 'none',
+            }}>
+            {t.id === 'pending' ? '⏳' : t.id === 'confirmed' ? '✅' : '📋'} {t.label}
+            <span style={{ background: filter === t.id ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.1)', padding: '2px 8px', borderRadius: 10, fontSize: '.78rem' }}>{t.count}</span>
           </button>
         ))}
       </div>
-      <div className="card" style={{padding:0, overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <div className="tbl-wrap"><table className="data-table">
-            <thead><tr><th>ক্রেতা</th><th>আইটেম</th><th>দাম</th><th>মেথড</th><th>TrxID</th><th>স্ট্যাটাস</th><th></th></tr></thead>
+
+      {/* Search & Filters */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
+        <input placeholder="🔍 Search by Order ID, customer name or transaction ID…"
+          value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+          style={{ flex: 1, minWidth: 240, padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, color: '#fff', fontSize: '.88rem', outline: 'none' }} />
+        <select value={payMethod} onChange={e => { setPayMethod(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Payment Methods</option>
+          {payMethods.map(m => <option key={m} value={m} style={{ background: '#1a0d0e' }}>{m}</option>)}
+        </select>
+        <select value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>All Statuses</option>
+          <option value="pending" style={{ background: '#1a0d0e' }}>Pending</option>
+          <option value="confirmed" style={{ background: '#1a0d0e' }}>Confirmed</option>
+          <option value="rejected" style={{ background: '#1a0d0e' }}>Rejected</option>
+        </select>
+        <select value={dateRange} onChange={e => { setDateRange(e.target.value); setPage(1) }} style={selStyle}>
+          <option value="all" style={{ background: '#1a0d0e' }}>📅 All Time</option>
+          <option value="today" style={{ background: '#1a0d0e' }}>Today</option>
+          <option value="week" style={{ background: '#1a0d0e' }}>Last 7 Days</option>
+          <option value="month" style={{ background: '#1a0d0e' }}>Last 30 Days</option>
+        </select>
+        <button onClick={clearFilters} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>🔥 Clear Filters</button>
+        <button onClick={load} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer', fontSize: '.85rem' }}>🔄 Refresh</button>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: 'linear-gradient(180deg, rgba(20,8,9,.9), rgba(10,4,5,.9))', border: '1px solid rgba(232,35,42,.3)', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                {['Order ID', 'Customer', 'Product / Item', 'Amount', 'Payment Method', 'Transaction ID', 'Order Date', 'Payment Status', 'Order Status', 'Action'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '14px 16px', fontSize: '.8rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {list.map(o => (
-                <tr key={o.id}>
-                  <td><b>{o.name}</b><br/><small style={{color:'var(--muted)'}}>{o.mobile}</small></td>
-                  <td>{o.item_name}</td>
-                  <td>{fmt(o.price)}</td>
-                  <td>{o.pay_method}</td>
-                  <td><code>{o.trx_id}</code></td>
-                  <td>{o.status === 'confirmed' ? <span style={{color:'#7dffa8'}}>✅</span> : o.status === 'rejected' ? <span style={{color:'#ff7b7b'}}>❌</span> : <span style={{color:'#f5c86e'}}>⏳</span>}<br/>
-                    {o.verified_at && <small style={{color:'var(--muted)'}}>{new Date(o.verified_at).toLocaleDateString('en-GB')}</small>}
-                    {o.reject_reason && <><br/><small style={{color:'#ff7b7b'}}>{o.reject_reason}</small></>}
+              {pageItems.map(o => (
+                <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                  <td style={{ padding: '14px 16px', fontSize: '.85rem', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>#CSK-{String(o.id).padStart(5, '0')}</td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(o.name), display: 'grid', placeItems: 'center', color: '#fff', fontSize: '.78rem', fontWeight: 700, flexShrink: 0 }}>{initials(o.name)}</div>
+                      <div>
+                        <div style={{ fontSize: '.88rem', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap' }}>{o.name}</div>
+                        <div style={{ fontSize: '.75rem', color: 'var(--muted)' }}>{o.mobile}</div>
+                      </div>
+                    </div>
                   </td>
-                  <td style={{whiteSpace:'nowrap'}}>
-                    {o.status === 'pending' && (
-                      <>
-                        <button className="mini-btn ok" disabled={busy === o.id} onClick={() => act(o.id, 'verify_order')}>✓ ভেরিফাই</button>{' '}
-                        <button className="mini-btn no" disabled={busy === o.id} onClick={() => act(o.id, 'reject_order')}>✕</button>
-                      </>
-                    )}
+                  <td style={{ padding: '14px 16px' }}>
+                    <div style={{ fontSize: '.88rem', color: '#fff', whiteSpace: 'nowrap' }}>{o.item_name}</div>
+                    <div style={{ fontSize: '.75rem', color: 'var(--muted)' }}>{o.course_id ? 'Course' : 'Product'}</div>
+                  </td>
+                  <td style={{ padding: '14px 16px', fontSize: '.88rem', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(o.price)}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '.85rem', color: '#fff', whiteSpace: 'nowrap' }}>{o.pay_method}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '.82rem', color: 'var(--muted)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{o.trx_id || '—'}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '.82rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                    {new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}<br />
+                    <span style={{ fontSize: '.75rem' }}>{new Date(o.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>{statusBadge(o.status)}</td>
+                  <td style={{ padding: '14px 16px' }}>{statusBadge(o.status === 'rejected' ? 'cancelled' : o.status)}</td>
+                  <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => setDetail(o)} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.5)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>👁 View</button>
+                    <button onClick={() => setDetail(o)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: '.8rem' }}>⋮</button>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table></div>
-          {list.length === 0 && <p style={{padding:20, color:'var(--muted)'}}>কোনো অর্ডার নেই।</p>}
+          </table>
+        </div>
+        {pageItems.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>📦</div>
+            <div style={{ fontSize: '1rem', color: '#fff' }}>No orders found</div>
+            <div style={{ fontSize: '.85rem' }}>Orders will appear here once customers make a purchase.</div>
+          </div>
+        )}
+        {/* Pagination */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: '.82rem', color: 'var(--muted)' }}>Showing {startIdx} to {endIdx} of {list.length} orders</span>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <button onClick={() => setPage(Math.max(1, curPage - 1))} disabled={curPage <= 1} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: curPage <= 1 ? 'not-allowed' : 'pointer', opacity: curPage <= 1 ? 0.4 : 1 }}>‹</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, curPage - 2), curPage + 1).map(p => (
+              <button key={p} onClick={() => setPage(p)} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: p === curPage ? '#e8232a' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: p === curPage ? 700 : 400, fontSize: '.85rem' }}>{p}</button>
+            ))}
+            <button onClick={() => setPage(Math.min(totalPages, curPage + 1))} disabled={curPage >= totalPages} style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: '#fff', cursor: curPage >= totalPages ? 'not-allowed' : 'pointer', opacity: curPage >= totalPages ? 0.4 : 1 }}>›</button>
+          </div>
         </div>
       </div>
-      <p style={{color:'var(--muted)', fontSize:'.88rem', marginTop:12}}>💡 ভেরিফাই করলে পেমেন্ট কনফার্ম হবে + কোর্স থাকলে মেম্বারের এনরোলমেন্ট অটো-অ্যাক্টিভেট হবে।</p>
+
+      {/* Detail Modal */}
+      {detail && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
+          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: '#fff' }}>Order Details</h3>
+              <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '.9rem' }}>
+              <div><span style={{ color: 'var(--muted)' }}>Order ID: </span><b style={{ color: '#fff' }}>#CSK-{String(detail.id).padStart(5, '0')}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Customer: </span><b style={{ color: '#fff' }}>{detail.name}</b> ({detail.mobile})</div>
+              <div><span style={{ color: 'var(--muted)' }}>Item: </span><b style={{ color: '#fff' }}>{detail.item_name}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Amount: </span><b style={{ color: '#fff' }}>{fmt(detail.price)}</b></div>
+              <div><span style={{ color: 'var(--muted)' }}>Payment: </span><b style={{ color: '#fff' }}>{detail.pay_method}</b> — <code>{detail.trx_id}</code></div>
+              <div><span style={{ color: 'var(--muted)' }}>Status: </span>{statusBadge(detail.status)}</div>
+              <div><span style={{ color: 'var(--muted)' }}>Date: </span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
+              {detail.reject_reason && <div><span style={{ color: 'var(--muted)' }}>Reject Reason: </span><span style={{ color: '#ff7b7b' }}>{detail.reject_reason}</span></div>}
+            </div>
+            {detail.status === 'pending' && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button onClick={() => act(detail.id, 'verify_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#2ecc71', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                  {busy === detail.id ? 'Processing…' : '✅ Verify & Approve'}
+                </button>
+                <button onClick={() => act(detail.id, 'reject_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#e8232a', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                  ❌ Reject
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -91,6 +91,56 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, added: true })
     }
 
+    // ── roles & permissions (admin only) ──
+    // Stored in cashskillbd_site_settings as JSON: custom_roles, role_permissions
+    if (action === 'role.list') {
+      if (me.role !== 'admin') return res.status(403).json({ error: 'admin only' })
+      const r = await sbGet(`cashskillbd_site_settings?key=in.(custom_roles,role_permissions)&select=key,value`)
+      const out = { custom_roles: [], role_permissions: {} }
+      for (const row of (r.data || [])) {
+        try {
+          const parsed = JSON.parse(row.value)
+          if (row.key === 'custom_roles' && Array.isArray(parsed)) out.custom_roles = parsed
+          if (row.key === 'role_permissions' && parsed && typeof parsed === 'object') out.role_permissions = parsed
+        } catch { /* ignore malformed */ }
+      }
+      return res.status(200).json(out)
+    }
+    if (action === 'role.save') {
+      if (me.role !== 'admin') return res.status(403).json({ error: 'admin only' })
+      const { custom_roles, role_permissions } = req.body || {}
+      // Validate: custom_roles must be array of {id,label,desc,color,active}
+      if (custom_roles !== undefined) {
+        if (!Array.isArray(custom_roles)) return res.status(400).json({ error: 'custom_roles must be an array' })
+        for (const cr of custom_roles) {
+          if (!cr || typeof cr.id !== 'string' || !/^[a-z0-9_-]{2,30}$/.test(cr.id)) return res.status(400).json({ error: 'bad custom role id' })
+          if (typeof cr.label !== 'string' || cr.label.trim().length < 2 || cr.label.trim().length > 40) return res.status(400).json({ error: 'bad custom role label' })
+        }
+        const ids = custom_roles.map(x => x.id)
+        if (new Set(ids).size !== ids.length) return res.status(400).json({ error: 'duplicate role id' })
+        if (ids.some(id => ['admin', 'manager', 'support', 'content', 'payment', 'finance', 'member'].includes(id))) return res.status(400).json({ error: 'role id conflicts with a built-in role' })
+      }
+      // Validate: role_permissions must be object roleId -> array of permission names
+      if (role_permissions !== undefined) {
+        if (!role_permissions || typeof role_permissions !== 'object' || Array.isArray(role_permissions)) return res.status(400).json({ error: 'role_permissions must be an object' })
+        // Super Admin must keep all essential permissions
+        const sa = role_permissions.admin
+        if (sa !== undefined && (!Array.isArray(sa) || !sa.includes('Admin Management'))) return res.status(400).json({ error: 'Super Admin must keep Admin Management permission' })
+        for (const [k, v] of Object.entries(role_permissions)) {
+          if (!Array.isArray(v) || v.some(p => typeof p !== 'string' || p.length > 60)) return res.status(400).json({ error: 'bad permission list for ' + k })
+        }
+      }
+      if (custom_roles !== undefined) {
+        await sbReq('cashskillbd_site_settings?on_conflict=key', 'POST', { key: 'custom_roles', value: JSON.stringify(custom_roles), updated_by: me.id }, 'resolution=merge-duplicates,return=minimal')
+      }
+      if (role_permissions !== undefined) {
+        await sbReq('cashskillbd_site_settings?on_conflict=key', 'POST', { key: 'role_permissions', value: JSON.stringify(role_permissions), updated_by: me.id }, 'resolution=merge-duplicates,return=minimal')
+      }
+      // Audit log
+      await sbReq('cashskillbd_audit_logs', 'POST', { actor_id: me.id, action: 'role.save', entity_type: 'role', entity_id: null, old_values: null, new_values: { custom_roles: custom_roles || null, role_permissions: role_permissions || null } }, 'return=minimal')
+      return res.status(200).json({ ok: true })
+    }
+
     // ── support tickets ──
     if (action === 'list_tickets') {
       const { status } = req.body

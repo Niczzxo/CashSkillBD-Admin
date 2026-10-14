@@ -147,7 +147,7 @@ export function Admin() {
       case 'price-history': return <PriceHistory session={session} />
       case 'audit-logs': return <AuditLogs session={session} role={role} />
       case 'admins': return <AdminManagement session={session} role={role} />
-      case 'roles': return <RolesPermissions />
+      case 'roles': return <RolesPermissions session={session} />
       case 'activity-logs': return <ActivityLogs session={session} role={role} />
       default: return null
     }

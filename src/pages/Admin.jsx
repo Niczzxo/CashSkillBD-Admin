@@ -30,6 +30,7 @@ import { Products } from './inventory/Products.jsx'
 import { VpsPlans } from './inventory/VpsPlans.jsx'
 import { Suppliers } from './inventory/Suppliers.jsx'
 import { SalesOrders } from './inventory/SalesOrders.jsx'
+import { AdminManagement, RolesPermissions, ActivityLogs } from './inventory/AdminManagement.jsx'
 import { Services } from './inventory/Services.jsx'
 import { Dollar } from './inventory/Dollar.jsx'
 import { Reports } from './inventory/Reports.jsx'
@@ -73,10 +74,18 @@ const GROUPS = [
       { id: 'audit-logs', key: 'audit_logs', icon: <IOrders /> },
     ],
   },
+  {
+    titleKey: 'admin_mgmt',
+    items: [
+      { id: 'admins', key: 'admins', icon: <IMembers /> },
+      { id: 'roles', key: 'roles_permissions', icon: <IGear /> },
+      { id: 'activity-logs', key: 'activity_logs', icon: <IOrders /> },
+    ],
+  },
 ]
 
 const SEC_TITLES = {
-  dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members',
+  dashboard: 'dashboard', 'site-settings': 'site_settings', orders: 'orders', lessons: 'lessons', members: 'members', admins: 'admins', roles: 'roles_permissions', 'activity-logs': 'activity_logs',
   team: 'team', reviews: 'reviews', tickets: 'tickets', inquiries: 'inquiries', 'seminar-regs': 'seminar_regs', products: 'products_mgmt',
   ip: 'services_ip', vps: 'services_vps', number: 'services_number',
   dollar: 'dollar', 'sales-orders': 'sales_orders',
@@ -130,6 +139,9 @@ export function Admin() {
       case 'reports': return <Reports session={session} role={role} />
       case 'price-history': return <PriceHistory session={session} />
       case 'audit-logs': return <AuditLogs session={session} role={role} />
+      case 'admins': return <AdminManagement session={session} role={role} />
+      case 'roles': return <RolesPermissions />
+      case 'activity-logs': return <ActivityLogs />
       default: return null
     }
   }

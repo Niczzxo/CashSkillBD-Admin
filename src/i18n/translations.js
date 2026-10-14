@@ -27,6 +27,10 @@ export const t = {
     audit_logs: '📝 Audit Logs',
     seminar_regs: '🎟️ Seminar Regs',
     products_mgmt: '📦 Product Management',
+    admin_mgmt: '🛡️ Admin Management',
+    admins: '👥 Admins',
+    roles_permissions: '🔐 Roles & Permissions',
+    activity_logs: '📋 Activity Logs',
     menu: 'Menu',
   },
   bn: {
@@ -56,6 +60,10 @@ export const t = {
     audit_logs: '📝 অডিট লগ',
     seminar_regs: '🎟️ সেমিনার রেজিস্ট্রেশন',
     products_mgmt: '📦 প্রোডাক্ট ম্যানেজমেন্ট',
+    admin_mgmt: '🛡️ অ্যাডমিন ম্যানেজমেন্ট',
+    admins: '👥 অ্যাডমিনস',
+    roles_permissions: '🔐 রোলস ও পারমিশন',
+    activity_logs: '📋 অ্যাক্টিভিটি লগ',
     menu: 'মেনু',
   }
 }

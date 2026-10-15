@@ -24,7 +24,9 @@ const H = {
 async function sbGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H })
   const t = await r.text()
-  return { ok: r.ok, status: r.status, data: t ? JSON.parse(t) : null }
+  let data = null
+  try { data = t ? JSON.parse(t) : null } catch { data = t }
+  return { ok: r.ok, status: r.status, data }
 }
 async function sbReq(path, method, body, prefer = 'return=representation') {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -164,7 +166,7 @@ export default async function handler(req, res) {
         status: oneOf(b.status || 'active', ['active','inactive']),
         is_popular: b.is_popular === true,
         sort_order: b.sort_order !== undefined ? reqInt(b.sort_order, 0, 9999) : 0,
-        specs: b.specs && typeof b.specs === 'object' ? b.specs : {},
+        specs: { ...(b.specs && typeof b.specs === 'object' ? b.specs : {}), ...(b.features !== undefined ? { features: Array.isArray(b.features) ? b.features : [] } : {}) },
         billing_cycle: oneOf(b.billing_cycle || 'monthly', ['hourly','monthly','3months','6months','yearly']),
         order_button_label: optStr(b.order_button_label, 100),
         created_by: me.id,
@@ -208,6 +210,12 @@ export default async function handler(req, res) {
       if (b.is_popular !== undefined) patch.is_popular = b.is_popular === true
       if (b.sort_order !== undefined) patch.sort_order = reqInt(b.sort_order, 0, 9999)
       if (b.specs !== undefined && typeof b.specs === 'object') patch.specs = b.specs
+      // features live inside specs (no dedicated column) — merge so a
+      // features-only update doesn't wipe the rest of specs.
+      if (b.features !== undefined) {
+        const base = (patch.specs && typeof patch.specs === 'object' ? patch.specs : old.specs) || {}
+        patch.specs = { ...base, features: Array.isArray(b.features) ? b.features : [] }
+      }
       if (b.billing_cycle !== undefined) patch.billing_cycle = oneOf(b.billing_cycle, ['hourly','monthly','3months','6months','yearly'])
       if (b.order_button_label !== undefined) patch.order_button_label = optStr(b.order_button_label, 100)
       if (b.currency !== undefined) patch.currency = oneOf(b.currency, ['BDT','USD'])
@@ -292,7 +300,7 @@ export default async function handler(req, res) {
     if (action === 'supplier.create') {
       if (!finance) return bad(res, 403, 'finance role required')
       const r = await sbReq('cashskillbd_suppliers', 'POST', {
-        name: reqStr(b.name, 200), contact: optStr(b.contact, 200),
+        name: reqStr(b.name, 200), contact: optStr(b.contact),
         notes: optStr(b.notes), created_by: me.id,
       })
       if (!r.ok) throw new Error('db error')
@@ -681,6 +689,10 @@ export default async function handler(req, res) {
         sbGet(`cashskillbd_expenses?select=amount&currency=eq.${cur}&and=(expense_date.gte.${from},expense_date.lte.${to})`),
         sbGet(`cashskillbd_dollar_txns?select=gross_margin,net_profit,bdt_amount,txn_type&status=eq.completed&${dr}`),
       ])
+      // A failed query must surface as an error — never silently render zeros.
+      for (const [label, r] of [['sales', sales], ['purchases', purch], ['expenses', exp], ['dollar', dlr]]) {
+        if (!r.ok) return bad(res, 500, `report query failed: ${label}`)
+      }
       const sum = (rows, k) => (rows.data || []).reduce((a, r) => a + Number(r[k] || 0), 0)
       // gross margin on product sales: revenue − cost of goods sold
       const items = await sbGet(
@@ -688,6 +700,7 @@ export default async function handler(req, res) {
         `&cashskillbd_sales_orders.status=in.(confirmed,delivered)` +
         `&cashskillbd_sales_orders.currency=eq.${cur}`
       )
+      if (!items.ok) return bad(res, 500, 'report query failed: sale items')
       let cogs = 0
       for (const it of items.data || []) {
         const pc = it.cashskillbd_products
@@ -703,6 +716,7 @@ export default async function handler(req, res) {
       const netProfit = F2(C2(grossMargin) - C2(expenses))
       // stock valuation (current)
       const stk = await sbGet(`cashskillbd_products?select=stock_qty,purchase_cost&currency=eq.${cur}&status=neq.archived`)
+      if (!stk.ok) return bad(res, 500, 'report query failed: stock')
       const stockVal = (stk.data || []).reduce((a, p) => a + Number(p.stock_qty) * Number(p.purchase_cost || 0), 0)
       return ok(res, {
         currency: cur, from, to,

@@ -12,7 +12,9 @@ const H = {
 async function sbGet(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H })
   const t = await r.text()
-  return { ok: r.ok, data: t ? JSON.parse(t) : null }
+  let data = null
+  try { data = t ? JSON.parse(t) : null } catch { data = t }
+  return { ok: r.ok, data }
 }
 
 async function sbReq(path, method, body, prefer = 'return=representation') {
@@ -21,7 +23,9 @@ async function sbReq(path, method, body, prefer = 'return=representation') {
     body: body ? JSON.stringify(body) : undefined,
   })
   const t = await r.text()
-  return { ok: r.ok, status: r.status, data: t ? JSON.parse(t) : null }
+  let data = null
+  try { data = t ? JSON.parse(t) : null } catch { data = t }
+  return { ok: r.ok, status: r.status, data }
 }
 
 async function caller(req) {
@@ -556,18 +560,21 @@ export default async function handler(req, res) {
     if (action === 'ticket_set_status') {
       const { ticket_id, status } = req.body
       if (!['open', 'in_progress', 'resolved', 'closed'].includes(status)) return res.status(400).json({ error: 'bad status' })
-      await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', { status, updated_at: new Date().toISOString() })
+      const u = await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', { status, updated_at: new Date().toISOString() })
+      if (!u.ok) return res.status(500).json({ error: 'ticket update failed' })
       return res.status(200).json({ ok: true })
     }
     if (action === 'ticket_reply') {
       const { ticket_id, message } = req.body
       if (!message?.trim()) return res.status(400).json({ error: 'empty' })
-      await sbReq('cashskillbd_ticket_messages', 'POST', {
+      const m = await sbReq('cashskillbd_ticket_messages', 'POST', {
         ticket_id, user_id: me.id, is_staff: true, message: message.slice(0, 2000),
       })
-      await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', {
+      if (!m.ok) return res.status(500).json({ error: 'reply failed' })
+      const u = await sbReq(`cashskillbd_support_tickets?id=eq.${ticket_id}`, 'PATCH', {
         status: 'in_progress', updated_at: new Date().toISOString(),
       })
+      if (!u.ok) return res.status(500).json({ error: 'ticket update failed' })
       return res.status(200).json({ ok: true })
     }
 
@@ -582,7 +589,8 @@ export default async function handler(req, res) {
     if (action === 'inquiry_set_status') {
       const { id, status } = req.body
       if (!['new', 'replied', 'closed'].includes(status)) return res.status(400).json({ error: 'bad status' })
-      await sbReq(`cashskillbd_contact_inquiries?id=eq.${id}`, 'PATCH', { status })
+      const u = await sbReq(`cashskillbd_contact_inquiries?id=eq.${id}`, 'PATCH', { status })
+      if (!u.ok) return res.status(500).json({ error: 'inquiry update failed' })
       return res.status(200).json({ ok: true })
     }
 

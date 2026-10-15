@@ -74,7 +74,13 @@ export async function manageApi(session, action, payload = {}) {
       console.warn('API unavailable, using direct Supabase fallback for:', action)
       return await directFallback(action, payload)
     }
-    const j = await r.json()
+    const text = await r.text()
+    let j
+    try { j = JSON.parse(text) } catch {
+      // Non-JSON (HTML) response = static hosting without the API.
+      // Reads fall back to direct Supabase; writes get a clear error from directFallback.
+      return await directFallback(action, payload)
+    }
     if (!r.ok) throw new Error(j.error || 'failed')
     return j
   } catch (e) {

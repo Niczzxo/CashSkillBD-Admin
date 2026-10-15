@@ -12,13 +12,6 @@ const blankForm = {
 
 
 export function Products({ session, role }) {
-  // Escape closes the open modal (Detail / Add-Edit)
-  useEffect(() => {
-    if (!detail && !showForm) return
-    const onKey = (e) => { if (e.key === 'Escape') { setDetail(null); setShowForm(false) } }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [detail, showForm])
   const { lang } = useLang()
   const CATEGORY_STYLES = {
     vps: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: tr(lang, 'prod_cat_vps') },
@@ -43,6 +36,16 @@ export function Products({ session, role }) {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(blankForm)
   const [detail, setDetail] = useState(null)
+
+  // Escape closes the open modal (Detail / Add-Edit) — must sit BELOW the
+  // useState declarations: the deps array [detail, showForm] is evaluated
+  // at the useEffect call, so placing it above would throw a TDZ ReferenceError.
+  useEffect(() => {
+    if (!detail && !showForm) return
+    const onKey = (e) => { if (e.key === 'Escape') { setDetail(null); setShowForm(false) } }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [detail, showForm])
   const [busy, setBusy] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
 

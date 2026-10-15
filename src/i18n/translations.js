@@ -187,9 +187,13 @@ export const t = {
   bn: { ...coreBn, ...bn_a, ...bn_b, ...bn_c, ...bn_d, ...bn_e, ...bn_f, ...bn_g, ...bn_h },
 }
 
-// Accepts full locale codes ('bn-BD', 'en-US', …); admin labels exist in en/bn only,
-// everything else falls back to English (never claim a fuller translation than exists).
+// Accepts full locale codes ('bn-BD', 'en-US', 'fr-FR', …).
+// Per-key fallback: bn-BD -> bn dict; any other locale -> its partial dict in
+// extra_locales.js (sidebar/header shell keys); missing key -> English; then the key itself.
+import { localeDicts } from './extra_locales.js'
 export const tr = (lang, key) => {
-  const l = (lang === 'bn' || lang === 'bn-BD') ? 'bn' : 'en'
-  return t[l]?.[key] || t.en[key] || key
+  if (lang === 'bn' || lang === 'bn-BD') return t.bn?.[key] || t.en[key] || key
+  const dict = localeDicts[lang]
+  if (dict && dict[key] !== undefined) return dict[key]
+  return t.en[key] || key
 }

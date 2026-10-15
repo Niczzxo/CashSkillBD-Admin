@@ -58,13 +58,13 @@ export function GlobalSearch({ open, onOpenChange, goSec, autoFocusKey = 0 }) {
     const like = `%${term.replace(/[%_]/g, '')}%`
     try {
       const [members, orders, courses, products] = await Promise.all([
-        supabase.from('cashskillbd_profiles').select('id, full_name, email, mobile, member_id, role').eq('role', 'member').or(`full_name.ilike.${like},email.ilike.${like},mobile.ilike.${like},member_id.ilike.${like}`).order('created_at', { ascending: false }).limit(10),
+        supabase.from('cashskillbd_profiles').select('id, full_name, email, phone, member_id, role').eq('role', 'member').or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like},member_id.ilike.${like}`).order('created_at', { ascending: false }).limit(10),
         supabase.from('cashskillbd_orders').select('id, name, mobile, item_name, price, pay_method, trx_id, status, created_at').or(`name.ilike.${like},mobile.ilike.${like},trx_id.ilike.${like},item_name.ilike.${like}`).order('created_at', { ascending: false }).limit(10),
         supabase.from('cashskillbd_courses').select('id, title, price, created_at').ilike('title', like).order('created_at', { ascending: false }).limit(10),
         supabase.from('cashskillbd_products').select('id, name, sku, category, selling_price, currency, stock_qty, status, created_at').or(`name.ilike.${like},sku.ilike.${like},category.ilike.${like}`).order('created_at', { ascending: false }).limit(10),
       ])
       const out = []
-      ;(members.data || []).forEach(m => out.push({ kind: 'members', id: `member-${m.id}`, title: m.full_name || '—', sub: `${tr(lang, 'nav_search_member')} • ID: ${m.member_id || '—'}`, meta: maskPhone(m.mobile), sec: 'members', created_at: null }))
+      ;(members.data || []).forEach(m => out.push({ kind: 'members', id: `member-${m.id}`, title: m.full_name || '—', sub: `${tr(lang, 'nav_search_member')} • ID: ${m.member_id || '—'}`, meta: maskPhone(m.phone), sec: 'members', created_at: null }))
       ;(orders.data || []).forEach(o => {
         out.push({ kind: 'orders', id: `order-${o.id}`, title: `#CSK-${String(o.id).padStart(5, '0')}`, sub: `${o.name || '—'} • ${o.item_name || ''}`, meta: fmtPrice(o.price), sec: 'orders', created_at: o.created_at })
         if (o.trx_id) out.push({ kind: 'payments', id: `pay-${o.id}`, title: `${o.pay_method || 'Payment'} • ${o.trx_id}`, sub: `${o.name || '—'} • ${o.item_name || ''}`, meta: fmtPrice(o.price), sec: 'orders', created_at: o.created_at })

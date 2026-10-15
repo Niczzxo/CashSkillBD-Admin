@@ -115,7 +115,8 @@ const SEC_TITLES = {
   team: 'team', reviews: 'reviews', tickets: 'tickets', inquiries: 'inquiries', 'seminar-regs': 'seminar_regs', products: 'products_mgmt',
   ip: 'services_ip', vps: 'services_vps', number: 'services_number',
   dollar: 'dollar', 'sales-orders': 'sales_orders',
-  inventory: 'inventory', suppliers: 'suppliers',
+  inventory: 'inventory', suppliers: 'suppliers', 'vps-plans': 'vps_plans',
+  'course-enrollments': 'course_enrollments', 'document-verification': 'document_verification',
   reports: 'reports', 'price-history': 'price_history', 'audit-logs': 'audit_logs',
 }
 

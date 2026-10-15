@@ -696,7 +696,7 @@ export default async function handler(req, res) {
       const sum = (rows, k) => (rows.data || []).reduce((a, r) => a + Number(r[k] || 0), 0)
       // gross margin on product sales: revenue − cost of goods sold
       const items = await sbGet(
-        `cashskillbd_sale_items?select=qty,unit_price,order_id,cashskillbd_products(purchase_cost,currency)` +
+        `cashskillbd_sale_items?select=qty,unit_price,order_id,cashskillbd_products(purchase_cost,currency),cashskillbd_sales_orders!inner(status,currency)` +
         `&cashskillbd_sales_orders.status=in.(confirmed,delivered)` +
         `&cashskillbd_sales_orders.currency=eq.${cur}`
       )
@@ -740,7 +740,7 @@ export default async function handler(req, res) {
       const from = /^\d{4}-\d{2}-\d{2}$/.test(s(b.from)) ? s(b.from) : '2000-01-01'
       const to = /^\d{4}-\d{2}-\d{2}$/.test(s(b.to)) ? s(b.to) : '2100-01-01'
       const items = await sbGet(
-        `cashskillbd_sale_items?select=qty,unit_price,product_id,cashskillbd_products(name,sku)` +
+        `cashskillbd_sale_items?select=qty,unit_price,product_id,cashskillbd_products(name,sku),cashskillbd_sales_orders!inner(status,created_at)` +
         `&cashskillbd_sales_orders.status=in.(confirmed,delivered)` +
         `&cashskillbd_sales_orders.created_at=gte.${from}&cashskillbd_sales_orders.created_at=lte.${to}T23:59:59`
       )

@@ -141,7 +141,7 @@ export function VpsPlans({ session, role }) {
       image_url: p.image_url || '', image_alt: s.image_alt || '',
       is_popular: !!p.is_popular, stock_qty: p.stock_qty ?? 0,
       status: p.status || 'active', sort_order: p.sort_order ?? 0,
-      features: Array.isArray(p.features) && p.features.length ? p.features : (p.features || ['']),
+      features: (() => { const f = p.specs?.features ?? p.features; return Array.isArray(f) && f.length ? f : [''] })(),
     })
     setDrawer({ mode: 'edit', plan: p }); setTab('basic'); setDirty(false)
   }
@@ -210,7 +210,7 @@ export function VpsPlans({ session, role }) {
         sku: (p.sku || '') + '-COPY', name: p.name + ' ' + tr(lang, 'vpsp_copy_suffix'), description: p.description,
         category: 'VPS', product_type: 'vps', selling_price: p.selling_price,
         currency: p.currency, stock_qty: p.stock_qty, specs: p.specs, is_popular: false,
-        sort_order: (p.sort_order || 0) + 1, features: p.features,
+        sort_order: (p.sort_order || 0) + 1, features: p.specs?.features ?? p.features,
       })
       load()
     } catch (e) { alert(e.message) }

@@ -665,6 +665,7 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_payment')} </span><b style={{ color: '#fff' }}>{detail.pay_method}</b> — <code>{detail.trx_id}</code></div>
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_status')} </span>{statusBadge(detail.status)}</div>
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_date')} </span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
+              {detail.admin_notes && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_admin_notes')} </span><b style={{ color: '#ffd166' }}>{detail.admin_notes}</b></div>}
               {detail.reject_reason && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_reject_reason')} </span><span style={{ color: '#ff7b7b' }}>{detail.reject_reason}</span></div>}
             </div>
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)' }}>

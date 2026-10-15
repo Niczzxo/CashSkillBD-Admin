@@ -15,7 +15,7 @@ export function Dashboard({ session, goSec }) {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
   })
-  const [quick, setQuick] = useState({ users: 0, members: 0, tickets: 0, approvals: 0 })
+  const [quick, setQuick] = useState({ users: 0, members: 0, approvals: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function Dashboard({ session, goSec }) {
       }
       try {
         const monthAgo = new Date(Date.now() - 30*24*3600*1000).toISOString()
-        const [p1, p2, p2b, p3, p3b, p4, q1, q2, q3, q4, q4b] = await Promise.all([
+        const [p1, p2, p2b, p3, p3b, p4, q1, q2, q4, q4b] = await Promise.all([
           safe(() => supabase.from('cashskillbd_products').select('id', { count: 'exact', head: true }).eq('status', 'active'), { count: 0 }),
           safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }), { count: 0 }),
           safe(() => supabase.from('cashskillbd_orders').select('id', { count: 'exact', head: true }), { count: 0 }),
@@ -38,7 +38,6 @@ export function Dashboard({ session, goSec }) {
           safe(() => supabase.from('cashskillbd_products').select('id,name,stock_qty').eq('status', 'active').lte('stock_qty', 5).order('stock_qty').limit(5), { data: [] }),
           safe(() => supabase.from('cashskillbd_profiles').select('id', { count: 'exact', head: true }), { count: 0 }),
           safe(() => supabase.from('cashskillbd_profiles').select('id', { count: 'exact', head: true }).eq('role', 'member'), { count: 0 }),
-          safe(() => supabase.from('cashskillbd_tickets').select('id', { count: 'exact', head: true }), { count: 0 }),
           safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
           safe(() => supabase.from('cashskillbd_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
         ])
@@ -52,13 +51,12 @@ export function Dashboard({ session, goSec }) {
         setQuick({
           users: q1.count || 0,
           members: q2.count || 0,
-          tickets: q3.count || 0,
           approvals: (q4.count || 0) + (q4b.count || 0),
         })
         setLowStock(p4.data || [])
         // Recent orders: merge both order systems (sales + course), newest first.
         const { data: salesRecent } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('id,order_no,customer_name,product_name,grand_total,status,created_at')
+          .select('id,order_no,customer_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
         const { data: courseRecent } = await safe(() => supabase.from('cashskillbd_orders')
           .select('id,name,item_name,price,status,created_at')
@@ -109,7 +107,6 @@ export function Dashboard({ session, goSec }) {
   const quickStats = [
     { label: tr(lang, 'dash_total_users'), value: quick.users, icon: <IUsers size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
     { label: tr(lang, 'dash_active_members'), value: quick.members, icon: <IUsers size={20} />, color: '#4da3ff', bg: 'rgba(77,163,255,.15)' },
-    { label: tr(lang, 'dash_total_tickets'), value: quick.tickets, icon: <IBox size={20} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)' },
     { label: tr(lang, 'dash_pending_approvals'), value: quick.approvals, icon: <IClock size={20} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)' },
   ]
 

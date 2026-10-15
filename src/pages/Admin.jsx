@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../i18n/LanguageContext.jsx'
 import { LanguageSelector } from '../components/LanguageSelector.jsx'
 import { tr } from '../i18n/translations.js'
@@ -161,13 +161,14 @@ export function Admin() {
     )
   }
 
-  const goSec = (id) => { setSec(id); setMenuOpen(false); window.scrollTo(0, 0) }
+  const [orderDetailId, setOrderDetailId] = useState(null)
+  const goSec = (id, opts) => { setSec(id); setMenuOpen(false); if (opts?.orderId != null) setOrderDetailId(opts.orderId); window.scrollTo(0, 0) }
 
   const renderSec = () => {
     switch (sec) {
       case 'dashboard': return <Dashboard session={session} goSec={goSec} />
       case 'site-settings': return <SiteSettings session={session} role={role} />
-      case 'orders': return <OrdersTab session={session} />
+      case 'orders': return <OrdersTab session={session} openOrderId={orderDetailId} onOrderDetailConsumed={() => setOrderDetailId(null)} />
       case 'lessons': return <LessonsTab />
       case 'members': return <MembersTab session={session} />
       case 'team': return <TeamTab session={session} role={role} />
@@ -313,10 +314,10 @@ export function Admin() {
 }
 
 /* ── Orders: verify payment -> activate enrollment ── */
-function OrdersTab({ session }) {
+function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
   const { lang } = useLang()
   const [orders, setOrders] = useState([])
-  const [filter, setFilter] = useState('pending')
+  const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [payMethod, setPayMethod] = useState('all')
   const [statusF, setStatusF] = useState('all')
@@ -330,7 +331,15 @@ function OrdersTab({ session }) {
     const { data } = await supabase.from('cashskillbd_orders').select('*').order('created_at', { ascending: false }).limit(200)
     setOrders(data || [])
   }
-  useEffect(() => { load() }, [])
+  const loadedRef = useRef(false)
+  useEffect(() => { load().then(() => { loadedRef.current = true }) }, [])
+  // Deep-link: a notification click passes openOrderId -> open that order's detail modal.
+  useEffect(() => {
+    if (openOrderId == null || !loadedRef.current) return
+    const o = orders.find(x => String(x.id) === String(openOrderId))
+    if (o) setDetail(o)
+    onOrderDetailConsumed?.()
+  }, [openOrderId, orders])
 
   const act = async (id, action, extra = {}) => {
     setBusy(id)
@@ -359,7 +368,8 @@ function OrdersTab({ session }) {
     list = list.filter(o =>
       String(o.id).includes(q) || String(o.name || '').toLowerCase().includes(q) ||
       String(o.mobile || '').includes(q) || String(o.trx_id || '').toLowerCase().includes(q) ||
-      String(o.item_name || '').toLowerCase().includes(q)
+      String(o.item_name || '').toLowerCase().includes(q) ||
+      ('#csk-' + String(o.id).padStart(5, '0')).includes(q)
     )
   }
   if (payMethod !== 'all') list = list.filter(o => o.pay_method === payMethod)

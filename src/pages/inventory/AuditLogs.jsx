@@ -131,8 +131,8 @@ export function AuditLogs({ session, role }) {
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'audit-logs.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'audit-logs.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
   const avatarColors = ['#e8232a', '#4da3ff', '#2ecc71', '#f5b942', '#e84393', '#8e44ad', '#00cec9']

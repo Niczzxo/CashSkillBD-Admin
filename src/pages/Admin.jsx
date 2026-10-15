@@ -39,6 +39,8 @@ import { AdminManagement, RolesPermissions } from './inventory/AdminManagement.j
 import { ActivityLogs } from './inventory/ActivityLogs.jsx'
 import { CourseEnrollments } from './inventory/CourseEnrollments.jsx'
 import { DocumentVerification } from './inventory/DocumentVerification.jsx'
+import { DeliveryForm } from '../components/DeliveryForm.jsx'
+import { deliveryStatusOf, DELIVERY_STATUS_META } from '../lib/delivery.js'
 import { CourseCustomers } from './inventory/CourseCustomers.jsx'
 import { ServiceCustomers } from './inventory/ServiceCustomers.jsx'
 import { IpServices } from './inventory/IpServices.jsx'
@@ -314,6 +316,8 @@ export function Admin() {
 }
 
 /* ── Orders: verify payment -> activate enrollment ── */
+const bnLabel = (lang, st, m) => (lang === 'bn' || lang === 'bn-BD') ? m.labelBn : m.label
+
 function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
   const { lang } = useLang()
   const [orders, setOrders] = useState([])
@@ -325,11 +329,25 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [deliveries, setDeliveries] = useState({})
+  const [deliveryOrder, setDeliveryOrder] = useState(null)
   const PAGE_SIZE = 8
 
   const load = async () => {
     const { data } = await supabase.from('cashskillbd_orders').select('*').order('created_at', { ascending: false }).limit(200)
     setOrders(data || [])
+    // Delivery records come ONLY from the API (service role) — the deliveries
+    // table has no public RLS policies, so payloads (passwords) can never leak
+    // through the anon key. On static hosting the API is unavailable: the
+    // delivery column degrades to the order's delivery_status.
+    try {
+      const j = await adminApi(session, 'delivery.list')
+      const map = {}
+      for (const d of (j.items || [])) {
+        if (!map[d.order_id] || new Date(d.created_at) > new Date(map[d.order_id].created_at)) map[d.order_id] = d
+      }
+      setDeliveries(map)
+    } catch { setDeliveries({}) }
   }
   const loadedRef = useRef(false)
   useEffect(() => { load().then(() => { loadedRef.current = true }) }, [])
@@ -360,9 +378,13 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
   const pending = orders.filter(o => o.status === 'pending').length
   const confirmed = orders.filter(o => o.status === 'confirmed').length
   const revenue = orders.filter(o => o.status === 'confirmed').reduce((s, o) => s + Number(o.price || 0), 0)
+  const dCount = (st) => orders.filter(o => deliveryStatusOf(o) === st).length
+  const awaitingDelivery = orders.filter(o => o.status === 'confirmed' && ['awaiting', 'processing'].includes(deliveryStatusOf(o))).length
 
   // ── Filtered list ──
-  let list = orders.filter(o => filter === 'all' || o.status === filter)
+  let list = filter === 'delivery'
+    ? orders.filter(o => o.status === 'confirmed' && ['awaiting', 'processing'].includes(deliveryStatusOf(o)))
+    : orders.filter(o => filter === 'all' || o.status === filter)
   if (search.trim()) {
     const q = search.toLowerCase()
     list = list.filter(o =>
@@ -415,6 +437,20 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
     }
     const st = styles[s] || styles.pending
     return <span style={{ padding: '4px 12px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: st.bg, color: st.color, border: st.border, whiteSpace: 'nowrap' }}>{st.label}</span>
+  }
+
+  const deliveryBadge = (o) => {
+    const st = deliveryStatusOf(o)
+    const m = DELIVERY_STATUS_META[st] || DELIVERY_STATUS_META.pending_payment
+    const label = (lang === 'bn' || lang === 'bn-BD') ? m.labelBn : m.label
+    return <span style={{ padding: '4px 12px', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, background: m.bg, color: m.color, border: m.border, whiteSpace: 'nowrap' }}>{label}</span>
+  }
+
+  // Opening the form marks the order Processing + assigns it to this operator
+  // (best-effort: the submit endpoint re-validates everything anyway).
+  const openDelivery = (o) => {
+    setDeliveryOrder(o)
+    adminApi(session, 'delivery.start', { order_id: o.id }).then(() => load()).catch(() => {})
   }
 
   const cardStyle = (border) => ({
@@ -484,11 +520,25 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
         </div>
       </div>
 
+      {/* Delivery stats */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+        {['awaiting', 'processing', 'delivered', 'failed'].map(st => {
+          const m = DELIVERY_STATUS_META[st]
+          return (
+            <div key={st} style={{ padding: '8px 14px', borderRadius: 10, background: m.bg, border: m.border, color: m.color, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer' }}
+              onClick={() => { if (st === 'awaiting' || st === 'processing') { setFilter('delivery'); setPage(1) } }}>
+              {bnLabel(lang, st, m)}: {dCount(st)}
+            </div>
+          )
+        })}
+      </div>
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         {[
           { id: 'pending', label: tr(lang, 'adm_orders_tab_pending'), count: pending },
           { id: 'confirmed', label: tr(lang, 'adm_orders_tab_confirmed'), count: confirmed },
+          { id: 'delivery', label: tr(lang, 'adm_orders_tab_delivery'), count: awaitingDelivery },
           { id: 'all', label: tr(lang, 'adm_orders_tab_all'), count: total },
         ].map(t => (
           <button key={t.id} onClick={() => { setFilter(t.id); setPage(1) }}
@@ -535,7 +585,7 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                {[tr(lang, 'adm_orders_th_order_id'), tr(lang, 'adm_orders_th_customer'), tr(lang, 'adm_orders_th_product'), tr(lang, 'adm_orders_th_amount'), tr(lang, 'adm_orders_th_pay_method'), tr(lang, 'adm_orders_th_trx'), tr(lang, 'adm_orders_th_date'), tr(lang, 'adm_orders_th_pay_status'), tr(lang, 'adm_orders_th_order_status'), tr(lang, 'adm_orders_th_action')].map(h => (
+                {[tr(lang, 'adm_orders_th_order_id'), tr(lang, 'adm_orders_th_customer'), tr(lang, 'adm_orders_th_product'), tr(lang, 'adm_orders_th_amount'), tr(lang, 'adm_orders_th_pay_method'), tr(lang, 'adm_orders_th_trx'), tr(lang, 'adm_orders_th_date'), tr(lang, 'adm_orders_th_pay_status'), tr(lang, 'adm_orders_th_delivery'), tr(lang, 'adm_orders_th_action')].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '14px 16px', fontSize: '.8rem', fontWeight: 600, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -565,8 +615,11 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
                     <span style={{ fontSize: '.75rem' }}>{new Date(o.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
                   <td style={{ padding: '14px 16px' }}>{statusBadge(o.status)}</td>
-                  <td style={{ padding: '14px 16px' }}>{statusBadge(o.status === 'rejected' ? 'cancelled' : o.status)}</td>
+                  <td style={{ padding: '14px 16px' }}>{deliveryBadge(o)}</td>
                   <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                    {o.status === 'confirmed' && ['awaiting', 'processing', 'failed'].includes(deliveryStatusOf(o)) && (
+                      <button onClick={() => openDelivery(o)} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(46,204,113,.5)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', fontSize: '.8rem', marginRight: 6, fontWeight: 600 }}>{tr(lang, 'adm_orders_deliver_btn')}</button>
+                    )}
                     <button onClick={() => setDetail(o)} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(232,35,42,.5)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '.8rem', marginRight: 6 }}>{tr(lang, 'adm_orders_view')}</button>
                     <button onClick={() => setDetail(o)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid rgba(255,255,255,.12)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: '.8rem' }}>⋮</button>
                   </td>
@@ -613,6 +666,26 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_date')} </span>{new Date(detail.created_at).toLocaleString('en-GB')}</div>
               {detail.reject_reason && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'adm_orders_detail_reject_reason')} </span><span style={{ color: '#ff7b7b' }}>{detail.reject_reason}</span></div>}
             </div>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <b style={{ color: '#fff', fontSize: '.92rem' }}>{tr(lang, 'adm_orders_delivery_section')}</b>
+                {deliveryBadge(detail)}
+              </div>
+              {deliveries[detail.id] && (
+                <div style={{ fontSize: '.82rem', color: 'var(--muted)' }}>
+                  {deliveries[detail.id].category} • {deliveries[detail.id].status}
+                  {deliveries[detail.id].delivered_at ? ` • ${new Date(deliveries[detail.id].delivered_at).toLocaleString('en-GB')}` : ''}
+                </div>
+              )}
+              {detail.status === 'confirmed' && ['awaiting', 'processing', 'failed', 'delivered'].includes(deliveryStatusOf(detail)) && (
+                <button onClick={() => openDelivery(detail)} style={{ marginTop: 10, padding: '9px 14px', borderRadius: 9, border: '1px solid rgba(46,204,113,.5)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', fontSize: '.85rem', fontWeight: 600 }}>
+                  {deliveryStatusOf(detail) === 'delivered' ? tr(lang, 'adm_orders_manage_delivery') : tr(lang, 'adm_orders_deliver_btn')}
+                </button>
+              )}
+              {detail.status === 'pending' && (
+                <div style={{ fontSize: '.82rem', color: 'var(--muted)', marginTop: 6 }}>{tr(lang, 'adm_orders_delivery_needs_payment')}</div>
+              )}
+            </div>
             {detail.status === 'pending' && (
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button onClick={() => act(detail.id, 'verify_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#2ecc71', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
@@ -625,6 +698,11 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
             )}
           </div>
         </div>
+      )}
+      {deliveryOrder && (
+        <DeliveryForm session={session} order={deliveryOrder}
+          onClose={() => setDeliveryOrder(null)}
+          onSaved={() => { load() }} />
       )}
     </div>
   )

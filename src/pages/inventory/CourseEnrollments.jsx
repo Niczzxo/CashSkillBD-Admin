@@ -146,12 +146,12 @@ export function CourseEnrollments({ session }) {
   const exportCSV = () => {
     if (list.length === 0) return alert(tr(lang, 'ce_err_no_export'))
     const header = tr(lang, 'ce_csv_header') + '\n'
-    const rows = list.map(o => `CSB-${String(o.id).padStart(6, '0')},"${o.name}",${memberIdOf(o)},${maskPhone(o.mobile)},"${(o.item_name || '').replace(/"/g, '""')}",${o.price},${o.pay_method || ''},${o.trx_id || ''},${o.identity?.status || o.identity_status || ''},${o.status},${new Date(o.created_at).toLocaleString('en-GB')}`).join('\n')
+    const rows = list.map(o => `#CSK-${String(o.id).padStart(5, '0')},"${o.name}",${memberIdOf(o)},${maskPhone(o.mobile)},"${(o.item_name || '').replace(/"/g, '""')}",${o.price},${o.pay_method || ''},${o.trx_id || ''},${o.identity?.status || o.identity_status || ''},${o.status},${new Date(o.created_at).toLocaleString('en-GB')}`).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'course-enrollments.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'course-enrollments.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
   const statusBadge = (s, kind) => {
@@ -261,7 +261,7 @@ export function CourseEnrollments({ session }) {
                 return (
                   <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer' }} onClick={() => openDetail(o)}>
                     <td style={{ padding: '12px 14px', color: 'var(--muted)', fontSize: '.85rem' }}>{(curPage - 1) * pageSize + i + 1}</td>
-                    <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>CSB-{String(o.id).padStart(6, '0')}</td>
+                    <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>#CSK-{String(o.id).padStart(5, '0')}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <div style={{ width: 34, height: 34, borderRadius: '50%', background: avatarColors[String(o.name || '').length % avatarColors.length], display: 'grid', placeItems: 'center', fontSize: '.72rem', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(o.name)}</div>
@@ -354,7 +354,7 @@ export function CourseEnrollments({ session }) {
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColors[String(detail.name || '').length % avatarColors.length], display: 'grid', placeItems: 'center', fontSize: '1rem', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(detail.name)}</div>
               <div>
                 <div style={{ fontWeight: 700, color: '#fff', fontSize: '1.05rem' }}>{detail.name}</div>
-                <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{tr(lang, 'ce_order_id')} CSB-{String(detail.id).padStart(6, '0')}</div>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{tr(lang, 'ce_order_id')} #CSK-{String(detail.id).padStart(5, '0')}</div>
                 <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{tr(lang, 'ce_enrolled')} {new Date(detail.created_at).toLocaleString('en-GB')}</div>
               </div>
             </div>

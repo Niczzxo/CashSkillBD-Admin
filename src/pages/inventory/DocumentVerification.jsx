@@ -152,7 +152,7 @@ export function DocumentVerification({ session }) {
               {pageItems.map((o, i) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer' }} onClick={() => openDetail(o)}>
                   <td style={{ padding: '12px 14px', color: 'var(--muted)', fontSize: '.85rem' }}>{(curPage - 1) * pageSize + i + 1}</td>
-                  <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.85rem', fontWeight: 600 }}>CSB-{String(o.id).padStart(6, '0')}</td>
+                  <td style={{ padding: '12px 14px', color: '#fff', fontSize: '.85rem', fontWeight: 600 }}>#CSK-{String(o.id).padStart(5, '0')}</td>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ color: '#fff', fontSize: '.88rem', fontWeight: 600 }}>{o.name}</div>
                     <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>{o.mobile}</div>
@@ -216,7 +216,7 @@ export function DocumentVerification({ session }) {
             </div>
             <div style={{ fontSize: '.9rem', marginBottom: 14 }}>
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_customer')} </span><b style={{ color: '#fff' }}>{detail.name}</b></div>
-              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_order')} </span><b style={{ color: '#fff' }}>CSB-{String(detail.id).padStart(6, '0')}</b> · {detail.item_name} · {fmtPrice(detail.price)}</div>
+              <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_order')} </span><b style={{ color: '#fff' }}>#CSK-{String(detail.id).padStart(5, '0')}</b> · {detail.item_name} · {fmtPrice(detail.price)}</div>
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_submitted')} </span>{new Date(detail.identity.created_at).toLocaleString('en-GB')}</div>
               {detail.identity.reviewed_at && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_reviewed')} </span>{new Date(detail.identity.reviewed_at).toLocaleString('en-GB')}</div>}
               {detail.identity.review_note && <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'dv_review_note')} </span>{detail.identity.review_note}</div>}

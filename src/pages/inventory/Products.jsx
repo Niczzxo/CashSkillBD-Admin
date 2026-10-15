@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { manageApi } from '../../lib/manageApi.js'
 import { useLang } from '../../i18n/LanguageContext.jsx'
 import { tr } from '../../i18n/translations.js'
@@ -11,6 +12,13 @@ const blankForm = {
 
 
 export function Products({ session, role }) {
+  // Escape closes the open modal (Detail / Add-Edit)
+  useEffect(() => {
+    if (!detail && !showForm) return
+    const onKey = (e) => { if (e.key === 'Escape') { setDetail(null); setShowForm(false) } }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [detail, showForm])
   const { lang } = useLang()
   const CATEGORY_STYLES = {
     vps: { bg: 'rgba(192,132,252,.12)', color: '#c084fc', border: 'rgba(192,132,252,.4)', label: tr(lang, 'prod_cat_vps') },
@@ -153,8 +161,8 @@ export function Products({ session, role }) {
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'products.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'products.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
     setExportOpen(false)
   }
 
@@ -373,7 +381,7 @@ export function Products({ session, role }) {
       </div>
 
       {/* Detail Modal */}
-      {detail && (
+      {detail && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setDetail(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -391,11 +399,12 @@ export function Products({ session, role }) {
               <div><span style={{ color: 'var(--muted)' }}>{tr(lang, 'prod_status_label')}{' '}</span><b style={{ color: '#fff' }}>{detail.status}</b></div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Add/Edit Modal */}
-      {showForm && (
+      {showForm && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowForm(false)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -446,7 +455,8 @@ export function Products({ session, role }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

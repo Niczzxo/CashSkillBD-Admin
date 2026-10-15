@@ -56,8 +56,8 @@ export function Notifications({ session, goSec }) {
       }))
       ;(allOrders.data || []).forEach(o => out.push({
         id: `pay-${o.id}`, type: 'payment', title: tr(lang, 'nav_notif_payment'),
-        text: `${tr(lang, 'nav_search_order')} #CSB-${String(o.id).padStart(6, '0')}${o.trx_id ? ` • ${o.trx_id}` : ''}`,
-        created_at: o.created_at, sec: 'orders',
+        text: `${tr(lang, 'nav_search_order')} #CSK-${String(o.id).padStart(5, '0')}${o.trx_id ? ` • ${o.trx_id}` : ''}`,
+        created_at: o.created_at, sec: 'orders', orderId: o.id,
       }))
       const idents = (enrollments?.items || []).filter(e => e.identity && e.identity.status === 'pending')
       idents.slice(0, 5).forEach(e => out.push({
@@ -100,7 +100,7 @@ export function Notifications({ session, goSec }) {
   const clickItem = (it) => {
     markOne(it.id)
     setOpen(false)
-    goSec(it.sec)
+    goSec(it.sec, it.orderId != null ? { orderId: it.orderId } : undefined)
   }
 
   const relTime = (iso) => {

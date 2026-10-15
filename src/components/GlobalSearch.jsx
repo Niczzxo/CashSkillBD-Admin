@@ -66,7 +66,7 @@ export function GlobalSearch({ open, onOpenChange, goSec, autoFocusKey = 0 }) {
       const out = []
       ;(members.data || []).forEach(m => out.push({ kind: 'members', id: `member-${m.id}`, title: m.full_name || '—', sub: `${tr(lang, 'nav_search_member')} • ID: ${m.member_id || '—'}`, meta: maskPhone(m.mobile), sec: 'members', created_at: null }))
       ;(orders.data || []).forEach(o => {
-        out.push({ kind: 'orders', id: `order-${o.id}`, title: `#CSB-${String(o.id).padStart(6, '0')}`, sub: `${o.name || '—'} • ${o.item_name || ''}`, meta: fmtPrice(o.price), sec: 'orders', created_at: o.created_at })
+        out.push({ kind: 'orders', id: `order-${o.id}`, title: `#CSK-${String(o.id).padStart(5, '0')}`, sub: `${o.name || '—'} • ${o.item_name || ''}`, meta: fmtPrice(o.price), sec: 'orders', created_at: o.created_at })
         if (o.trx_id) out.push({ kind: 'payments', id: `pay-${o.id}`, title: `${o.pay_method || 'Payment'} • ${o.trx_id}`, sub: `${o.name || '—'} • ${o.item_name || ''}`, meta: fmtPrice(o.price), sec: 'orders', created_at: o.created_at })
       })
       ;(courses.data || []).forEach(c => out.push({ kind: 'courses', id: `course-${c.id}`, title: c.title || '—', sub: tr(lang, 'nav_search_course'), meta: c.price != null ? fmtPrice(c.price) : '', sec: 'lessons', created_at: c.created_at }))

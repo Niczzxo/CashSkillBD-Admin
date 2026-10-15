@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLang } from '../i18n/LanguageContext.jsx'
 import { tr } from '../i18n/translations.js'
 import { supabase } from '../lib/supabase.js'
@@ -75,7 +76,7 @@ export function ProfileMenu({ session, role, goSec, signOut }) {
         </div>
       )}
 
-      {showProfile && (
+      {showProfile && createPortal(
         <div onClick={() => setShowProfile(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={tr(lang, 'nav_profile_title')} style={{ width: 'min(440px, 100%)', background: '#160B0D', border: '1px solid #3A171B', borderRadius: 16, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
@@ -95,7 +96,6 @@ export function ProfileMenu({ session, role, goSec, signOut }) {
                 [tr(lang, 'nav_profile_email'), email],
                 [tr(lang, 'nav_profile_role'), role || 'admin'],
                 [tr(lang, 'nav_profile_joined'), joined],
-                [tr(lang, 'nav_profile_user_id'), session?.user?.id ? String(session.user.id).slice(0, 8) + '…' : '—'],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.05)', borderRadius: 9, padding: '10px 12px', fontSize: '.86rem' }}>
                   <span style={{ color: '#8D7B7F' }}>{k}</span>
@@ -104,7 +104,8 @@ export function ProfileMenu({ session, role, goSec, signOut }) {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

@@ -657,6 +657,7 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: 'unknown action' })
   } catch (e) {
-    return res.status(500).json({ error: 'server error' })
+    // Name the failing action so a 500 is diagnosable from the response alone.
+    return res.status(500).json({ error: `server error [${(req.body || {}).action || 'unknown'}]: ${e.message || 'unknown'}` })
   }
 }

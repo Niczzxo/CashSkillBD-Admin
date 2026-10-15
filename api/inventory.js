@@ -312,7 +312,7 @@ export default async function handler(req, res) {
       const id = reqInt(b.id, 1)
       const patch = {}
       if (b.name !== undefined) patch.name = reqStr(b.name, 200)
-      if (b.contact !== undefined) patch.contact = optStr(b.contact, 200)
+      if (b.contact !== undefined) patch.contact = optStr(b.contact)
       if (b.notes !== undefined) patch.notes = optStr(b.notes)
       const r = await sbReq(`cashskillbd_suppliers?id=eq.${id}`, 'PATCH', patch)
       if (!r.ok || !r.data?.[0]) return bad(res, 404, 'not found')
@@ -785,7 +785,8 @@ export default async function handler(req, res) {
   } catch (e) {
     if (e.message && /invalid|required|bad |too long|must be|duplicate/.test(e.message))
       return bad(res, 400, e.message)
-    return bad(res, 500, 'server error')
+    // Name the failing action so a 500 is diagnosable from the response alone.
+    return bad(res, 500, `server error [${action || 'unknown'}]: ${e.message || 'unknown'}`)
   }
   } catch (e) {
     return bad(res, 500, 'server error')

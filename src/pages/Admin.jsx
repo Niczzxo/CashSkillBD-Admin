@@ -319,6 +319,35 @@ export function Admin() {
 /* ── Orders: verify payment -> activate enrollment ── */
 const bnLabel = (lang, st, m) => (lang === 'bn' || lang === 'bn-BD') ? m.labelBn : m.label
 
+function NotifyCustomer({ session, orderId, hasAccount }) {
+  const { lang } = useLang()
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  if (!hasAccount) {
+    return <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)', fontSize: '.82rem', color: 'var(--muted)' }}>{tr(lang, 'adm_orders_notify_guest')}</div>
+  }
+  const send = async () => {
+    if (!text.trim() || busy) return
+    setBusy(true)
+    try {
+      await adminApi(session, 'notification.send', { order_id: orderId, message: text.trim() })
+      setText(''); setSent(true)
+    } catch (e) { alert(e.message) }
+    setBusy(false)
+  }
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+      <b style={{ color: '#fff', fontSize: '.92rem' }}>{tr(lang, 'adm_orders_notify_label')}</b>
+      <textarea value={text} onChange={e => setText(e.target.value)} placeholder={tr(lang, 'adm_orders_notify_ph')} rows={2} style={{ width: '100%', marginTop: 8, padding: '9px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.04)', color: '#fff', fontSize: '.85rem', resize: 'vertical' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+        <button onClick={send} disabled={busy || !text.trim()} style={{ padding: '8px 14px', borderRadius: 9, border: 'none', background: '#e8232a', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '.85rem' }}>{busy ? tr(lang, 'adm_orders_processing') : tr(lang, 'adm_orders_notify_send')}</button>
+        {sent && <span style={{ color: '#2ecc71', fontSize: '.82rem' }}>{tr(lang, 'adm_orders_notify_sent')}</span>}
+      </div>
+    </div>
+  )
+}
+
 function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
   const { lang } = useLang()
   const [orders, setOrders] = useState([])
@@ -688,6 +717,7 @@ function OrdersTab({ session, openOrderId, onOrderDetailConsumed }) {
                 <div style={{ fontSize: '.82rem', color: 'var(--muted)', marginTop: 6 }}>{tr(lang, 'adm_orders_delivery_needs_payment')}</div>
               )}
             </div>
+            <NotifyCustomer session={session} orderId={detail.id} hasAccount={!!detail.user_id} />
             {detail.status === 'pending' && (
               <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button onClick={() => act(detail.id, 'verify_order')} disabled={busy === detail.id} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#2ecc71', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>

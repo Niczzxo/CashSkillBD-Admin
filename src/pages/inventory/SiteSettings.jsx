@@ -17,7 +17,7 @@ const ALL_KEYS = [
   'reviews_title', 'reviews_subtitle',
   'payment_title', 'bkash_number', 'bkash_qr', 'nagad_number', 'nagad_qr',
   'rocket_number', 'rocket_qr', 'binance_uid', 'binance_qr',
-  'ltc_address', 'usdt_address', 'paypal_email',
+  'ltc_address', 'ltc_qr', 'usdt_address', 'usdt_qr', 'paypal_email', 'paypal_qr',
   'faq_title', 'footer_about', 'whatsapp_number',
   'privacy_policy_url', 'terms_url', 'about_url',
   'meta_title', 'meta_description', 'meta_keywords', 'og_image',
@@ -337,8 +337,11 @@ export function SiteSettings({ session, role }) {
           <Field label={tr(lang, 'ss_f_binance')} value={vals.binance_uid} onChange={v => set('binance_uid', v)} disabled={!fin} />
           <ImageField label={tr(lang, 'ss_f_binance_qr')} value={vals.binance_qr} onUpload={f => uploadImage('binance_qr', f)} onRemove={() => set('binance_qr', '')} disabled={!fin} recommended={tr(lang, 'ss_rec_qr')} />
           <Field label={tr(lang, 'ss_f_ltc')} value={vals.ltc_address} onChange={v => set('ltc_address', v)} disabled={!fin} />
+          <ImageField label={tr(lang, 'ss_f_ltc_qr')} value={vals.ltc_qr} onUpload={f => uploadImage('ltc_qr', f)} onRemove={() => set('ltc_qr', '')} disabled={!fin} recommended={tr(lang, 'ss_rec_qr')} />
           <Field label={tr(lang, 'ss_f_usdt')} value={vals.usdt_address} onChange={v => set('usdt_address', v)} disabled={!fin} />
+          <ImageField label={tr(lang, 'ss_f_usdt_qr')} value={vals.usdt_qr} onUpload={f => uploadImage('usdt_qr', f)} onRemove={() => set('usdt_qr', '')} disabled={!fin} recommended={tr(lang, 'ss_rec_qr')} />
           <Field label={tr(lang, 'ss_f_paypal')} value={vals.paypal_email} onChange={v => set('paypal_email', v)} disabled={!fin} />
+          <ImageField label={tr(lang, 'ss_f_paypal_qr')} value={vals.paypal_qr} onUpload={f => uploadImage('paypal_qr', f)} onRemove={() => set('paypal_qr', '')} disabled={!fin} recommended={tr(lang, 'ss_rec_qr')} />
         </div>
 
         {/* ── Footer Settings ── */}

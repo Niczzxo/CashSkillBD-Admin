@@ -52,7 +52,6 @@ export function SalesOrders({ session, role }) {
   const [productF, setProductF] = useState('all')
   const [typeF, setTypeF] = useState('all')
   const [payMethodF, setPayMethodF] = useState('all')
-  const [payStatusF, setPayStatusF] = useState('all')
   const [orderStatusF, setOrderStatusF] = useState('all')
   const [sortF, setSortF] = useState('newest')
   const [page, setPage] = useState(1)
@@ -135,12 +134,11 @@ export function SalesOrders({ session, role }) {
   if (productF !== 'all') list = list.filter(o => (itemsMap[o.id] || []).some(it => String(it.product_id) === String(productF)))
   if (typeF !== 'all') list = list.filter(o => typeOf(o) === typeF)
   if (payMethodF !== 'all') list = list.filter(o => (o.payment_method || '—') === payMethodF)
-  if (payStatusF !== 'all') list = list.filter(o => (o.payment_status || o.status) === payStatusF)
   if (orderStatusF !== 'all') list = list.filter(o => mapStatus(o.status) === orderStatusF)
 
   list = [...list].sort((a, b) => sortF === 'newest' ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at))
 
-  const clearFilters = () => { setSearch(''); setDateF('all'); setProductF('all'); setTypeF('all'); setPayMethodF('all'); setPayStatusF('all'); setOrderStatusF('all'); setStatusTab('all'); setPage(1) }
+  const clearFilters = () => { setSearch(''); setDateF('all'); setProductF('all'); setTypeF('all'); setPayMethodF('all'); setOrderStatusF('all'); setStatusTab('all'); setPage(1) }
 
   const totalPages = Math.max(1, Math.ceil(list.length / pageSize))
   const curPage = Math.min(page, totalPages)
@@ -221,8 +219,8 @@ export function SalesOrders({ session, role }) {
     const blob = new Blob([header + rowsCsv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'sales-orders.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'sales-orders.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
   const inp = {
@@ -316,13 +314,6 @@ export function SalesOrders({ session, role }) {
         <select value={payMethodF} onChange={e => { setPayMethodF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 150 }}>
           <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_all_payment_methods')}</option>
           {payMethods.map(m => <option key={m} value={m} style={{ background: '#1a0d0e' }}>{m}</option>)}
-        </select>
-        <select value={payStatusF} onChange={e => { setPayStatusF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 130 }}>
-          <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_all_statuses')}</option>
-          <option value="pending" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_status_pending')}</option>
-          <option value="confirmed" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_confirmed')}</option>
-          <option value="delivered" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_delivered')}</option>
-          <option value="cancelled" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_status_cancelled')}</option>
         </select>
         <select value={orderStatusF} onChange={e => { setOrderStatusF(e.target.value); setPage(1) }} style={{ ...selStyle, minWidth: 130 }}>
           <option value="all" style={{ background: '#1a0d0e' }}>{tr(lang, 'so_all_statuses')}</option>

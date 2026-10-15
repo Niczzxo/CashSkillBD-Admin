@@ -21,36 +21,53 @@ export function Dashboard({ session, goSec }) {
   useEffect(() => {
     (async () => {
       const safe = async (fn, fallback) => {
-        try { return await fn() } catch (e) { console.warn('Dashboard query failed:', e.message); return fallback }
+        try {
+          const r = await fn()
+          if (r?.error) { console.warn('Dashboard query failed:', r.error.message); return fallback }
+          return r
+        } catch (e) { console.warn('Dashboard query failed:', e.message); return fallback }
       }
       try {
-        const [p1, p2, p3, p4, q1, q2, q3, q4] = await Promise.all([
+        const monthAgo = new Date(Date.now() - 30*24*3600*1000).toISOString()
+        const [p1, p2, p2b, p3, p3b, p4, q1, q2, q3, q4, q4b] = await Promise.all([
           safe(() => supabase.from('cashskillbd_products').select('id', { count: 'exact', head: true }).eq('status', 'active'), { count: 0 }),
-          safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
-          safe(() => supabase.from('cashskillbd_sales_orders').select('grand_total').eq('status', 'confirmed').gte('created_at', new Date(Date.now() - 30*24*3600*1000).toISOString()), { data: [] }),
+          safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }), { count: 0 }),
+          safe(() => supabase.from('cashskillbd_orders').select('id', { count: 'exact', head: true }), { count: 0 }),
+          safe(() => supabase.from('cashskillbd_sales_orders').select('grand_total').eq('status', 'confirmed').gte('created_at', monthAgo), { data: [] }),
+          safe(() => supabase.from('cashskillbd_orders').select('price').eq('status', 'confirmed').gte('created_at', monthAgo), { data: [] }),
           safe(() => supabase.from('cashskillbd_products').select('id,name,stock_qty').eq('status', 'active').lte('stock_qty', 5).order('stock_qty').limit(5), { data: [] }),
           safe(() => supabase.from('cashskillbd_profiles').select('id', { count: 'exact', head: true }), { count: 0 }),
           safe(() => supabase.from('cashskillbd_profiles').select('id', { count: 'exact', head: true }).eq('role', 'member'), { count: 0 }),
           safe(() => supabase.from('cashskillbd_tickets').select('id', { count: 'exact', head: true }), { count: 0 }),
           safe(() => supabase.from('cashskillbd_sales_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
+          safe(() => supabase.from('cashskillbd_orders').select('id', { count: 'exact', head: true }).eq('status', 'pending'), { count: 0 }),
         ])
         const revenue = (p3.data || []).reduce((s, o) => s + Number(o.grand_total || 0), 0)
+          + (p3b.data || []).reduce((s, o) => s + Number(o.price || 0), 0)
         setStats({
           products: p1.count || 0,
-          pendingOrders: p2.count || 0,
+          totalOrders: (p2.count || 0) + (p2b.count || 0),
           revenue30d: revenue,
         })
         setQuick({
           users: q1.count || 0,
           members: q2.count || 0,
           tickets: q3.count || 0,
-          approvals: q4.count || 0,
+          approvals: (q4.count || 0) + (q4b.count || 0),
         })
         setLowStock(p4.data || [])
-        const { data: ords } = await safe(() => supabase.from('cashskillbd_sales_orders')
-          .select('id,customer_name,product_name,grand_total,status,created_at')
+        // Recent orders: merge both order systems (sales + course), newest first.
+        const { data: salesRecent } = await safe(() => supabase.from('cashskillbd_sales_orders')
+          .select('id,order_no,customer_name,product_name,grand_total,status,created_at')
           .order('created_at', { ascending: false }).limit(5), { data: [] })
-        setRecent(ords || [])
+        const { data: courseRecent } = await safe(() => supabase.from('cashskillbd_orders')
+          .select('id,name,item_name,price,status,created_at')
+          .order('created_at', { ascending: false }).limit(5), { data: [] })
+        const merged = [
+          ...(salesRecent || []).map(o => ({ key: `sales-${o.id}`, displayId: o.order_no || `#CSB${o.id}`, customer: o.customer_name, amount: o.grand_total, status: o.status, created_at: o.created_at })),
+          ...(courseRecent || []).map(o => ({ key: `course-${o.id}`, displayId: `#CSK-${String(o.id).padStart(5, '0')}`, customer: o.name, amount: o.price, status: o.status, created_at: o.created_at })),
+        ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 5)
+        setRecent(merged)
         // Sales chart: daily data for selected month
         const [y, m] = selMonth.split('-').map(Number)
         const daysInMonth = new Date(y, m, 0).getDate()
@@ -63,12 +80,17 @@ export function Dashboard({ session, goSec }) {
         for (let d = 1; d <= daysInMonth; d++) {
           buckets.push({ label: `${d}`, total: 0, orders: 0, key: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` })
         }
-        ;(mall || []).forEach(o => {
-          const dt = new Date(o.created_at)
+        const bucketAdd = (created_at, amount) => {
+          const dt = new Date(created_at)
           const k = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
           const b = buckets.find(x => x.key === k)
-          if (b) { b.total += Number(o.grand_total || 0); b.orders += 1 }
-        })
+          if (b) { b.total += Number(amount || 0); b.orders += 1 }
+        }
+        ;(mall || []).forEach(o => bucketAdd(o.created_at, o.grand_total))
+        const { data: call } = await safe(() => supabase.from('cashskillbd_orders')
+          .select('price,created_at').eq('status', 'confirmed')
+          .gte('created_at', rangeAgo.toISOString()).lte('created_at', rangeEnd.toISOString()), { data: [] })
+        ;(call || []).forEach(o => bucketAdd(o.created_at, o.price))
         setMonthly(buckets)
       } catch (e) { err(e) }
       finally { setLoading(false) }
@@ -78,10 +100,10 @@ export function Dashboard({ session, goSec }) {
   if (loading) return <p style={{color:'var(--muted)', padding:20}}>{tr(lang, 'dash_loading')}</p>
 
   const cards = [
-    { label: tr(lang, 'dash_total_products'), sub: tr(lang, 'dash_total_products_sub'), value: stats.products, icon: <IBox size={22} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)', border: '#ff6b6b' },
-    { label: tr(lang, 'dash_total_orders'), sub: tr(lang, 'dash_total_orders_sub'), value: stats.pendingOrders, icon: <IClock size={22} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)', border: '#f5b942' },
-    { label: tr(lang, 'dash_total_revenue'), sub: tr(lang, 'dash_total_revenue_sub'), value: money(stats.revenue30d), icon: <IMoney size={22} />, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', border: '#2ecc71' },
-    { label: tr(lang, 'dash_low_stock'), sub: tr(lang, 'dash_low_stock_sub'), value: lowStock.length, icon: <IWarn size={22} />, color: '#e84393', bg: 'rgba(232,67,147,.15)', border: '#e84393' },
+    { label: tr(lang, 'dash_total_products'), sub: tr(lang, 'dash_total_products_sub'), value: stats.products, nav: 'products', icon: <IBox size={22} />, color: '#ff6b6b', bg: 'rgba(255,107,107,.15)', border: '#ff6b6b' },
+    { label: tr(lang, 'dash_total_orders'), sub: tr(lang, 'dash_total_orders_sub'), value: stats.totalOrders, nav: 'orders', icon: <IClock size={22} />, color: '#f5b942', bg: 'rgba(245,185,66,.15)', border: '#f5b942' },
+    { label: tr(lang, 'dash_total_revenue'), sub: tr(lang, 'dash_total_revenue_sub'), value: money(stats.revenue30d), nav: 'reports', icon: <IMoney size={22} />, color: '#2ecc71', bg: 'rgba(46,204,113,.15)', border: '#2ecc71' },
+    { label: tr(lang, 'dash_low_stock'), sub: tr(lang, 'dash_low_stock_sub'), value: lowStock.length, nav: 'products', icon: <IWarn size={22} />, color: '#e84393', bg: 'rgba(232,67,147,.15)', border: '#e84393' },
   ]
 
   const quickStats = [
@@ -123,7 +145,7 @@ export function Dashboard({ session, goSec }) {
       {/* Summary cards */}
       <div className="dash-grid">
         {cards.map((c, i) => (
-          <div key={i} className="dash-card" style={{border:`1px solid ${c.border}`, position:'relative'}}>
+          <div key={i} className="dash-card" onClick={() => c.nav && goSec?.(c.nav)} style={{border:`1px solid ${c.border}`, position:'relative', cursor: c.nav ? 'pointer' : 'default'}} role={c.nav ? 'button' : undefined} tabIndex={c.nav ? 0 : undefined} onKeyDown={e => { if (c.nav && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); goSec?.(c.nav) } }}>
             <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12}}>
               <div className="dash-icon" style={{background: c.bg, color: c.color}}>{c.icon}</div>
               <button style={{width:28, height:28, borderRadius:'50%', border:`1px solid ${c.border}`, background:'transparent', color:c.color, cursor:'pointer', display:'grid', placeItems:'center'}}><IArrowR /></button>
@@ -228,10 +250,10 @@ export function Dashboard({ session, goSec }) {
               <table className="panel-table">
                 <thead><tr><th>{tr(lang, 'dash_th_order_id')}</th><th>{tr(lang, 'dash_th_customer')}</th><th>{tr(lang, 'dash_th_amount')}</th><th>{tr(lang, 'dash_th_status')}</th><th>{tr(lang, 'dash_th_date')}</th></tr></thead>
                 <tbody>{recent.map(o => (
-                  <tr key={o.id}>
-                    <td style={{fontFamily:'monospace', fontSize:'.78rem'}}>{String(o.id).slice(0,8)}</td>
-                    <td>{o.customer_name || '-'}</td>
-                    <td>{money(o.grand_total)}</td>
+                  <tr key={o.key}>
+                    <td style={{fontFamily:'monospace', fontSize:'.78rem'}}>{o.displayId}</td>
+                    <td>{o.customer || '-'}</td>
+                    <td>{money(o.amount)}</td>
                     <td><span className={`status-badge status-${o.status}`}>{o.status}</span></td>
                     <td style={{fontSize:'.8rem', color:'var(--muted)'}}>{new Date(o.created_at).toLocaleDateString()}</td>
                   </tr>

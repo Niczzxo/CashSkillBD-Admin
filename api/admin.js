@@ -68,6 +68,17 @@ export default async function handler(req, res) {
       const order = o.data?.[0]
       if (!order) return res.status(404).json({ error: 'order not found' })
       await patchOrder(order.id, { status: 'confirmed', delivery_status: 'awaiting', delivery_updated_at: new Date().toISOString() })
+      // Customer notification: order confirmed (best-effort — a missing
+      // notifications table must never break the verify itself).
+      if (order.user_id) {
+        try {
+          await sbReq('cashskillbd_notifications', 'POST', {
+            user_id: order.user_id, order_id: order.id, type: 'order',
+            title: 'Order confirmed',
+            message: `Your order #CSK-${String(order.id).padStart(5, '0')} (${order.item_name || 'order'}) is confirmed. The admin will send the details to your account shortly.`,
+          }, 'return=minimal')
+        } catch { /* notifications table may not exist yet — ignore */ }
+      }
       if (order.user_id && order.course_id) {
         // Activate course ONLY when identity verification is also approved
         let identityOk = true
@@ -87,6 +98,26 @@ export default async function handler(req, res) {
     if (action === 'reject_order') {
       const { order_id } = req.body
       await patchOrder(Number(order_id), { status: 'rejected', delivery_status: 'cancelled', delivery_updated_at: new Date().toISOString() })
+      return res.status(200).json({ ok: true })
+    }
+
+    // ── send a message/details to the customer of an order ──
+    // The message lands in the customer's account (public-site bell).
+    if (action === 'notification.send') {
+      if (!['admin', 'finance', 'support'].includes(me.role)) return res.status(403).json({ error: 'admin only' })
+      const { order_id, message, title } = req.body || {}
+      const msg = String(message || '').trim().slice(0, 1000)
+      if (!msg) return res.status(400).json({ error: 'message required' })
+      const o = await sbGet(`cashskillbd_orders?id=eq.${Number(order_id)}&select=id,user_id,item_name`)
+      const order = o.data?.[0]
+      if (!order) return res.status(404).json({ error: 'order not found' })
+      if (!order.user_id) return res.status(400).json({ error: 'order has no account to notify (guest order)' })
+      const r = await sbReq('cashskillbd_notifications', 'POST', {
+        user_id: order.user_id, order_id: order.id, type: 'message',
+        title: String(title || 'Message from CashSkillBD').slice(0, 120),
+        message: msg,
+      }, 'return=minimal')
+      if (!r.ok) return res.status(500).json({ error: 'notification failed — run the notifications migration' })
       return res.status(200).json({ ok: true })
     }
 

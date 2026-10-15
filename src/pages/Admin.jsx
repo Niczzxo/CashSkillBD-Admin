@@ -24,7 +24,9 @@ async function adminApi(session, action, payload = {}) {
     },
     body: JSON.stringify({ action, ...payload }),
   })
-  const j = await r.json()
+  const text = await r.text()
+  let j
+  try { j = JSON.parse(text) } catch { throw new Error('API unavailable on static hosting — use Vercel version') }
   if (!r.ok) throw new Error(j.error || 'failed')
   return j
 }
@@ -175,10 +177,10 @@ export function Admin() {
       case 'seminar-regs': return <SeminarRegs session={session} />
       case 'products': return <Products session={session} role={role} />
       case 'vps-plans': return <VpsPlans session={session} role={role} />
-      case 'course-customers': return <CourseCustomers />
+      case 'course-customers': return <CourseCustomers goSec={goSec} />
       case 'course-enrollments': return <CourseEnrollments session={session} />
       case 'document-verification': return <DocumentVerification session={session} />
-      case 'service-customers': return <ServiceCustomers />
+      case 'service-customers': return <ServiceCustomers goSec={goSec} />
       case 'ip': return <IpServices session={session} />
       case 'vps': return <VpsManagement session={session} />
       case 'number': return <NumbersManagement session={session} />
@@ -186,7 +188,7 @@ export function Admin() {
       case 'sales-orders': return <SalesOrders session={session} role={role} />
       case 'inventory': return <Inventory session={session} />
       case 'suppliers': return <Suppliers session={session} role={role} />
-      case 'reports': return <Reports session={session} role={role} />
+      case 'reports': return <Reports session={session} role={role} goSec={goSec} />
       case 'price-history': return <PriceHistory session={session} />
       case 'audit-logs': return <AuditLogs session={session} role={role} />
       case 'admins': return <AdminManagement session={session} role={role} />
@@ -984,9 +986,6 @@ function MembersTab({ session }) {
             <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '.88rem' }}>{tr(lang, 'adm_members_subtitle')}</p>
           </div>
         </div>
-        <button onClick={() => alert(tr(lang, 'adm_members_add_note'))} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
-          + {tr(lang, 'adm_members_add')}
-        </button>
       </div>
 
       {/* Stats */}
@@ -1279,8 +1278,6 @@ function ReviewsTab() {
   const [dateF, setDateF] = useState('all')
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState(null)
-  const [reply, setReply] = useState(null)
-  const [replyText, setReplyText] = useState('')
   const [editR, setEditR] = useState(null)
   const [editText, setEditText] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -1508,7 +1505,6 @@ function ReviewsTab() {
                   <td style={{ padding: '12px 14px', fontSize: '.85rem', color: '#fff', textAlign: 'center' }}>{r.helpful_count ?? 0}</td>
                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                     <button title={tr(lang, 'adm_reviews_view')} onClick={() => setDetail(r)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
-                    <button title={tr(lang, 'adm_reviews_reply')} onClick={() => { setReply(r); setReplyText('') }} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>↩</button>
                     <button title={tr(lang, 'adm_reviews_edit')} onClick={() => { setEditR(r); setEditText(r.text || '') }} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
                     {(r.status === 'pending') && (
                       <button title={tr(lang, 'adm_reviews_approve')} onClick={() => setStatus(r, 'approved')} disabled={busy === r.id} style={actionBtn('rgba(46,204,113,.1)', 'rgba(46,204,113,.4)', '#2ecc71')}>✓</button>
@@ -1560,21 +1556,6 @@ function ReviewsTab() {
             <div style={{ marginBottom: 10 }}>{stars(detail.rating)}</div>
             <p style={{ color: 'var(--silver)', fontSize: '.92rem', lineHeight: 1.6, margin: 0 }}>{detail.text || tr(lang, 'adm_reviews_no_text')}</p>
             {detail.post_url && <p style={{ marginTop: 12 }}><a href={detail.post_url} target="_blank" rel="noreferrer" style={{ color: '#ff6b6b', fontSize: '.85rem' }}>{tr(lang, 'adm_reviews_view_original')}</a></p>}
-          </div>
-        </div>
-      )}
-
-      {/* Reply Modal */}
-      {reply && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setReply(null)}>
-          <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>{tr(lang, 'adm_reviews_reply_to')} {reply.author}</h3>
-              <button onClick={() => setReply(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
-            </div>
-            <p style={{ color: 'var(--muted)', fontSize: '.85rem', margin: '0 0 12px' }}>{tr(lang, 'adm_reviews_reply_note')}</p>
-            <textarea value={replyText} onChange={e => setReplyText(e.target.value)} rows={4} placeholder={tr(lang, 'adm_reviews_reply_ph')} style={{ ...inp, resize: 'vertical' }} />
-            <button onClick={() => { alert(tr(lang, 'adm_reviews_reply_noted') + ' ' + replyText.slice(0, 50)); setReply(null) }} style={{ marginTop: 12, padding: '11px', width: '100%', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>{tr(lang, 'adm_reviews_send_reply')}</button>
           </div>
         </div>
       )}

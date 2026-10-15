@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase.js'
 import { useLang } from '../../i18n/LanguageContext.jsx'
 import { tr } from '../../i18n/translations.js'
 
-export function CourseCustomers() {
+export function CourseCustomers({ goSec }) {
   const { lang } = useLang()
   const [members, setMembers] = useState([])
   const [orders, setOrders] = useState([])
@@ -131,7 +131,7 @@ export function CourseCustomers() {
               <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'cc_export_csv')}</button>
             </div>
           )}
-          <button onClick={() => alert(tr(lang, 'cc_alert_courses_managed'))} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+          <button onClick={() => goSec ? goSec('lessons') : alert(tr(lang, 'cc_alert_courses_managed'))} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
             {tr(lang, 'cc_view_all_courses')}
           </button>
         </div>
@@ -232,7 +232,7 @@ export function CourseCustomers() {
                     <button title={tr(lang, 'cc_view_details')} onClick={() => setDetail(c)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
                     <button title={tr(lang, 'cc_purchased_courses')} onClick={() => setDetail(c)} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>📖</button>
                     <button title={tr(lang, 'cc_purchase_history')} onClick={() => setDetail(c)} style={actionBtn('rgba(46,204,113,.1)', 'rgba(46,204,113,.4)', '#2ecc71')}>🧾</button>
-                    <button title={tr(lang, 'cc_edit')} onClick={() => alert(tr(lang, 'cc_edit_via_members'))} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
+                    <button title={tr(lang, 'cc_edit')} onClick={() => goSec ? goSec('members') : alert(tr(lang, 'cc_edit_via_members'))} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
                   </td>
                 </tr>
               ))}

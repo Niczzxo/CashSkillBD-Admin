@@ -44,7 +44,7 @@ export function Inventory({ session }) {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name: '', sku: '', description: '', category: 'VPS', selling_price: '', purchase_cost: '', currency: 'BDT', stock_qty: '', low_stock_at: '5', image_url: '' })
-  const [showStock, setShowStock] = useState(null) // { product, direction }
+  const [showStock, setShowStock] = useState(null) // { products: [], direction }
   const [stockQty, setStockQty] = useState('')
   const [stockNotes, setStockNotes] = useState('')
   const [showMoves, setShowMoves] = useState(false)
@@ -148,18 +148,25 @@ export function Inventory({ session }) {
     if (!showStock) return
     const qty = Number(stockQty)
     if (!qty || qty <= 0) return alert(tr(lang, 'inv_valid_quantity'))
-    if (showStock.direction === 'out' && qty > Number(showStock.product.stock_qty || 0)) {
-      return alert(tr(lang, 'inv_insufficient_stock') + ' ' + showStock.product.stock_qty)
+    if (showStock.direction === 'out') {
+      const short = showStock.products.find(p => qty > Number(p.stock_qty || 0))
+      if (short) return alert(`${tr(lang, 'inv_insufficient_stock')} ${short.name}: ${short.stock_qty}`)
     }
     setBusy('stock')
     try {
-      await manageApi(session, 'product.adjust_stock', {
-        id: showStock.product.id, qty_change: qty, direction: showStock.direction,
-        reason: 'adjustment', notes: stockNotes.trim() || undefined,
-      })
+      const failed = []
+      for (const p of showStock.products) {
+        try {
+          await manageApi(session, 'product.adjust_stock', {
+            id: p.id, qty_change: qty, direction: showStock.direction,
+            reason: 'adjustment', notes: stockNotes.trim() || undefined,
+          })
+        } catch (ex) { failed.push(`${p.name}: ${ex.message}`) }
+      }
       setShowStock(null); setStockQty(''); setStockNotes('')
       load()
-      alert(tr(lang, 'inv_stock_updated'))
+      if (failed.length) alert(failed.join('\n'))
+      else alert(tr(lang, 'inv_stock_updated'))
     } catch (ex) { alert(ex.message) }
     setBusy(null)
   }
@@ -208,8 +215,8 @@ export function Inventory({ session }) {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={exportCSV} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(232,35,42,.4)', background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>↓ {tr(lang, 'inv_export')}</button>
-          <button onClick={() => { if (!selected.size) return alert(tr(lang, 'inv_select_product')); const p = products.find(x => x.id === [...selected][0]); setShowStock({ product: p, direction: 'in' }) }} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(46,204,113,.4)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>+ {tr(lang, 'inv_stock_in')}</button>
-          <button onClick={() => { if (!selected.size) return alert(tr(lang, 'inv_select_product')); const p = products.find(x => x.id === [...selected][0]); setShowStock({ product: p, direction: 'out' }) }} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>← {tr(lang, 'inv_stock_out')}</button>
+          <button onClick={() => { if (!selected.size) return alert(tr(lang, 'inv_select_product')); const ps = products.filter(x => selected.has(x.id)); setShowStock({ products: ps, direction: 'in' }) }} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(46,204,113,.4)', background: 'rgba(46,204,113,.1)', color: '#2ecc71', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>+ {tr(lang, 'inv_stock_in')}</button>
+          <button onClick={() => { if (!selected.size) return alert(tr(lang, 'inv_select_product')); const ps = products.filter(x => selected.has(x.id)); setShowStock({ products: ps, direction: 'out' }) }} style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(245,185,66,.4)', background: 'rgba(245,185,66,.1)', color: '#f5b942', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem' }}>← {tr(lang, 'inv_stock_out')}</button>
           <button onClick={openCreate} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>+ {tr(lang, 'inv_add_product')}</button>
         </div>
       </div>
@@ -383,8 +390,8 @@ export function Inventory({ session }) {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button onClick={() => { setDetail(null); openEdit(detail) }} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>{tr(lang, 'inv_edit_product')}</button>
-              <button onClick={() => { setDetail(null); setShowStock({ product: detail, direction: 'in' }) }} style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(46,204,113,.4)', background: 'transparent', color: '#2ecc71', cursor: 'pointer' }}>{tr(lang, 'inv_stock_in')}</button>
-              <button onClick={() => { setDetail(null); setShowStock({ product: detail, direction: 'out' }) }} style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(245,185,66,.4)', background: 'transparent', color: '#f5b942', cursor: 'pointer' }}>{tr(lang, 'inv_stock_out')}</button>
+              <button onClick={() => { setDetail(null); setShowStock({ products: [detail], direction: 'in' }) }} style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(46,204,113,.4)', background: 'transparent', color: '#2ecc71', cursor: 'pointer' }}>{tr(lang, 'inv_stock_in')}</button>
+              <button onClick={() => { setDetail(null); setShowStock({ products: [detail], direction: 'out' }) }} style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(245,185,66,.4)', background: 'transparent', color: '#f5b942', cursor: 'pointer' }}>{tr(lang, 'inv_stock_out')}</button>
             </div>
           </div>
         </div>
@@ -439,11 +446,16 @@ export function Inventory({ session }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setShowStock(null)}>
           <div style={{ background: '#140809', border: '1px solid rgba(232,35,42,.4)', borderRadius: 16, padding: 24, maxWidth: 420, width: '100%' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#fff' }}>{showStock.direction === 'in' ? tr(lang, 'inv_stock_in') : tr(lang, 'inv_stock_out')} — {showStock.product.name}</h3>
+              <h3 style={{ margin: 0, color: '#fff' }}>{showStock.direction === 'in' ? tr(lang, 'inv_stock_in') : tr(lang, 'inv_stock_out')} — {showStock.products.length > 1 ? `${showStock.products.length} × ${tr(lang, 'inv_col_product')}` : showStock.products[0].name}</h3>
               <button onClick={() => setShowStock(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
             <form onSubmit={adjustStock} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: '.88rem', color: 'var(--muted)' }}>{tr(lang, 'inv_current_stock')} <b style={{ color: '#fff' }}>{showStock.product.stock_qty ?? 0}</b></div>
+              <div style={{ fontSize: '.88rem', color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {showStock.products.map(p => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span><span>{tr(lang, 'inv_current_stock')} <b style={{ color: '#fff' }}>{p.stock_qty ?? 0}</b></span></div>
+              ))}
+              {showStock.products.length > 1 && <div style={{ color: '#8D7B7F', fontSize: '.8rem' }}>{tr(lang, 'inv_qty_applies_all')}</div>}
+            </div>
               <div><label style={lbl}>{tr(lang, 'inv_quantity')}</label><input type="number" min="1" value={stockQty} onChange={e => setStockQty(e.target.value)} style={inp} placeholder={tr(lang, 'inv_quantity_placeholder')} /></div>
               <div><label style={lbl}>{tr(lang, 'inv_reason_note')}</label><input value={stockNotes} onChange={e => setStockNotes(e.target.value)} style={inp} placeholder={tr(lang, 'inv_reason_placeholder')} /></div>
               <button type="submit" disabled={busy === 'stock'} style={{ padding: '11px', borderRadius: 10, border: 'none', background: showStock.direction === 'in' ? 'linear-gradient(135deg, #2ecc71, #27ae60)' : 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>

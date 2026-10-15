@@ -13,7 +13,7 @@ const serviceTypeOf = (itemName) => {
   return 'other'
 }
 
-export function ServiceCustomers() {
+export function ServiceCustomers({ goSec }) {
   const { lang } = useLang()
   const SERVICE_TYPES = [
     { id: 'vps', label: tr(lang, 'sc_type_vps'), color: '#c084fc', bg: 'rgba(192,132,252,.12)', border: 'rgba(192,132,252,.4)' },
@@ -145,7 +145,7 @@ export function ServiceCustomers() {
               <button onClick={exportCSV} style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '.85rem' }}>{tr(lang, 'sc_export_csv')}</button>
             </div>
           )}
-          <button onClick={() => alert(tr(lang, 'sc_alert_services_managed'))} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
+          <button onClick={() => goSec ? goSec('products') : alert(tr(lang, 'sc_alert_services_managed'))} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '.88rem', boxShadow: '0 4px 16px rgba(232,35,42,.35)' }}>
             {tr(lang, 'sc_view_all_services')}
           </button>
         </div>
@@ -254,7 +254,7 @@ export function ServiceCustomers() {
                   <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                     <button title={tr(lang, 'sc_view_details')} onClick={() => setDetail(c)} style={actionBtn('transparent', 'rgba(255,255,255,.15)', '#fff')}>👁</button>
                     <button title={tr(lang, 'sc_service_history')} onClick={() => setDetail(c)} style={actionBtn('rgba(77,163,255,.1)', 'rgba(77,163,255,.4)', '#4da3ff')}>🧾</button>
-                    <button title={tr(lang, 'sc_edit')} onClick={() => alert(tr(lang, 'sc_edit_via_members'))} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
+                    <button title={tr(lang, 'sc_edit')} onClick={() => goSec ? goSec('members') : alert(tr(lang, 'sc_edit_via_members'))} style={actionBtn('rgba(245,185,66,.1)', 'rgba(245,185,66,.4)', '#f5b942')}>✏️</button>
                   </td>
                 </tr>
               ))}

@@ -160,8 +160,8 @@ export function IpServices({ session }) {
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'ip-services.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'ip-services.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
     setExportOpen(false)
   }
 

@@ -172,8 +172,8 @@ export function Suppliers({ session, role }) {
     const blob = new Blob([header + rowsCsv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'suppliers.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'suppliers.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
   const inp = {

@@ -289,8 +289,8 @@ export function SeminarRegs({ session }) {
     const blob = new Blob([header + rows2], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'seminar-registrations.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = 'seminar-registrations.csv'; document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
     setExportOpen(false)
   }
 

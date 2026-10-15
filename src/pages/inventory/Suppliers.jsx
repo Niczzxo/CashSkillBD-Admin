@@ -36,7 +36,7 @@ export function Suppliers({ session, role }) {
   const [editing, setEditing] = useState(null)
   const [busy, setBusy] = useState(null)
   const [detail, setDetail] = useState(null)
-  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', product_id: '', qty: '', unit_cost: '', invoice: '', notes: '', date: new Date().toISOString().slice(0, 10) })
+  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', product_id: '', qty: '', unit_cost: '' })
   const [showPurchaseHistory, setShowPurchaseHistory] = useState(false)
 
   const load = async () => {
@@ -158,9 +158,8 @@ export function Suppliers({ session, role }) {
       await manageApi(session, 'purchase.record', {
         supplier_id: Number(purchaseForm.supplier_id), product_id: Number(purchaseForm.product_id),
         qty, unit_cost: unit, currency: 'BDT',
-        invoice: purchaseForm.invoice.trim() || undefined, notes: purchaseForm.notes.trim() || undefined,
       })
-      setPurchaseForm({ supplier_id: '', product_id: '', qty: '', unit_cost: '', invoice: '', notes: '', date: new Date().toISOString().slice(0, 10) })
+      setPurchaseForm({ supplier_id: '', product_id: '', qty: '', unit_cost: '' })
       load()
       alert(tr(lang, 'sup_alert_purchase_saved'))
     } catch (ex) { alert(ex.message) }
@@ -285,16 +284,11 @@ export function Suppliers({ session, role }) {
               <div><label style={lbl}>{tr(lang, 'sup_pf_unit')}</label><input type="number" step="0.01" min="0" value={purchaseForm.unit_cost} onChange={e => setPurchaseForm({ ...purchaseForm, unit_cost: e.target.value })} style={inp} placeholder="0.00" /></div>
               <div><label style={lbl}>{tr(lang, 'sup_pf_total')}</label><input value={`৳ ${purchaseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} disabled style={{ ...inp, opacity: 0.6, fontWeight: 700 }} /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <div><label style={lbl}>{tr(lang, 'sup_pf_date')}</label><input type="date" value={purchaseForm.date} onChange={e => setPurchaseForm({ ...purchaseForm, date: e.target.value })} style={inp} /></div>
-              <div><label style={lbl}>{tr(lang, 'sup_pf_invoice')}</label><input value={purchaseForm.invoice} onChange={e => setPurchaseForm({ ...purchaseForm, invoice: e.target.value })} style={inp} placeholder={tr(lang, 'sup_ph_invoice')} /></div>
-              <div><label style={lbl}>{tr(lang, 'sup_f_notes')}</label><input value={purchaseForm.notes} onChange={e => setPurchaseForm({ ...purchaseForm, notes: e.target.value })} style={inp} placeholder={tr(lang, 'sup_ph_notes')} /></div>
-            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="submit" disabled={busy === 'purchase'} style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #e8232a, #b01020)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
                 {busy === 'purchase' ? tr(lang, 'sup_saving') : tr(lang, 'sup_add_purchase')}
               </button>
-              <button type="button" onClick={() => setPurchaseForm({ supplier_id: '', product_id: '', qty: '', unit_cost: '', invoice: '', notes: '', date: new Date().toISOString().slice(0, 10) })} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'sup_reset')}</button>
+              <button type="button" onClick={() => setPurchaseForm({ supplier_id: '', product_id: '', qty: '', unit_cost: '' })} style={{ padding: '11px 20px', borderRadius: 10, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: '#fff', cursor: 'pointer' }}>{tr(lang, 'sup_reset')}</button>
             </div>
           </form>
         </div>

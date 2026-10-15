@@ -8,7 +8,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10)
 const monthAgo = () => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10)
 const fmtMoney = (v, cur) => `${cur === 'USD' ? '$' : '৳'} ${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`
 
-export function Reports({ session, role }) {
+export function Reports({ session, role, goSec: goSecProp }) {
   const { lang } = useLang()
   const [from, setFrom] = useState(monthAgo)
   const [to, setTo] = useState(todayStr)
@@ -72,9 +72,8 @@ export function Reports({ session, role }) {
   })
   const totalStatusOrders = rangeOrders.length
 
-  // ── Daily chart series ──
+  // ── Chart series: daily / weekly (Monday-start) / monthly buckets ──
   const chartData = useMemo(() => {
-    const days = []
     const start = new Date(fromDate)
     const end = new Date(toDate)
     const salesByDay = {}, purchByDay = {}
@@ -86,12 +85,31 @@ export function Reports({ session, role }) {
       const d = (p.purchased_at || p.created_at).slice(0, 10)
       purchByDay[d] = (purchByDay[d] || 0) + Number(p.total_cost || 0)
     })
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().slice(0, 10)
-      days.push({ date: key, label: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), sales: salesByDay[key] || 0, purchases: purchByDay[key] || 0 })
+    const bucketKey = (iso) => {
+      if (period === 'monthly') return iso.slice(0, 7)
+      if (period === 'weekly') {
+        const d = new Date(iso + 'T00:00:00')
+        const monday = new Date(d)
+        monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+        return monday.toISOString().slice(0, 10)
+      }
+      return iso
     }
-    return days
-  }, [rangeOrders, rangePurchases, from, to])
+    const bucketLabel = (key) => {
+      if (period === 'monthly') return new Date(key + '-02T00:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+      return new Date(key + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    }
+    const buckets = new Map()
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10)
+      const key = bucketKey(iso)
+      if (!buckets.has(key)) buckets.set(key, { date: key, label: bucketLabel(key), sales: 0, purchases: 0 })
+      const b = buckets.get(key)
+      b.sales += salesByDay[iso] || 0
+      b.purchases += purchByDay[iso] || 0
+    }
+    return [...buckets.values()]
+  }, [rangeOrders, rangePurchases, from, to, period])
 
   // ── Sales by payment method ──
   const payMethodTotals = {}
@@ -162,7 +180,8 @@ export function Reports({ session, role }) {
   const avatarColors = ['#e8232a', '#4da3ff', '#2ecc71', '#f5b942', '#e84393', '#8e44ad', '#00cec9']
   const initials = (name) => (name || '?').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 
-  const goSec = (sec) => { window.location.hash = `#/${sec}` }
+  // Use Admin's state navigation; hash changes alone never switch sections.
+  const goSec = goSecProp || ((sec) => { window.location.hash = `#/${sec}` })
 
   return (
     <div>

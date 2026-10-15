@@ -65,7 +65,9 @@ async function adminApi(session, action, payload = {}) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify({ action, ...payload }),
   })
-  const j = await res.json()
+  const text = await res.text()
+  let j
+  try { j = JSON.parse(text) } catch { throw new Error('API unavailable on static hosting — use Vercel version') }
   if (!res.ok) throw new Error(j.error || 'Request failed')
   return j
 }
